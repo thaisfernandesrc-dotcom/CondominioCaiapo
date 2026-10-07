@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Condomínio Caiapó</title>
+<style>
+/* Layout: coluna única de app, cabeçalho fixo com abas e seletor de mês; balancete em folha única como a planilha */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --fg:#26303d; --muted:#6a7789; --line:#d8dee7;
+  --slate:#5d7391; --slate-soft:#e3e9f1;
+  --in:#2f8a3e; --in-soft:#e2f2e4; --out:#b8322c; --out-soft:#f8e3e1;
+  --f-body:Roboto,"Segoe UI",system-ui,sans-serif;
+  --f-head:"Roboto Condensed",Roboto,system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#161b22; --surface:#1f2630; --fg:#e4e9f0; --muted:#97a3b4; --line:#323c4a;
+  --slate:#9bb2d1; --slate-soft:#2a3545; --in:#6cc77a; --in-soft:#1f3324; --out:#f0837b; --out-soft:#3a2321; color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body)}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 40px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 12px) 0 8px;border-bottom:1px solid var(--line)}
+.brand{font:600 17px/1.2 var(--f-head);color:var(--slate)}
+.brand small{display:block;font:400 12px var(--f-body);color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-top:2px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--slate-soft);padding:4px;border-radius:10px;margin-top:10px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:600 14px var(--f-body);padding:10px;border-radius:7px}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.month{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+.month b{font:600 18px var(--f-head);color:var(--slate)}
+.iconbtn{width:44px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-size:20px}
+section{margin-top:18px}
+h2{font:600 15px var(--f-head);color:var(--slate);margin:0 0 8px;letter-spacing:.02em}
+.hint{color:var(--muted);font-size:13px;margin:0 0 8px}
+.units{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.unit{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font:13px var(--f-body);color:var(--fg);text-align:left}
+.unit .st{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--slate)}
+.unit.paid{background:var(--in-soft);border-color:transparent}
+.unit.paid .st{color:var(--in)}
+.unit.arm{background:var(--slate);color:var(--surface)}.unit.arm .st{color:var(--surface)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.form{display:grid;gap:10px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.seg button{border:1px solid var(--line);background:var(--surface);color:var(--muted);padding:9px 4px;border-radius:8px;font:500 13px var(--f-body)}
+.seg button[aria-pressed="true"]{background:var(--slate);border-color:var(--slate);color:var(--surface)}
+label{display:grid;gap:4px;font-size:12px;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+input,select{font:16px var(--f-body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;min-width:0}
+.row2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:8px}
+.primary{border:0;background:var(--slate);color:var(--surface);font:600 15px var(--f-body);padding:12px;border-radius:9px}
+.ghost{border:1px solid var(--slate);background:transparent;color:var(--slate);font:600 14px var(--f-body);padding:11px;border-radius:9px}
+.danger{border:0;background:var(--out);color:var(--surface);font:600 14px var(--f-body);padding:11px;border-radius:9px}
+button:disabled{opacity:.5}
+.msg{font-size:13px;min-height:1.2em;margin:0}
+.msg.err{color:var(--out)}.msg.ok{color:var(--in)}
+.list{list-style:none;margin:0;padding:0;display:grid}
+.list li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+.list .d{min-width:0;overflow-wrap:anywhere}
+.list .d small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.v{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.v.in{color:var(--in)}.v.out{color:var(--out)}
+.del{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:7px 10px;font:500 12px var(--f-body);white-space:nowrap}
+.del.arm{background:var(--out);border-color:var(--out);color:var(--surface)}
+.empty{color:var(--muted);font-size:14px;padding:6px 0;display:block!important}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px 16px 20px}
+.sheet .top{display:flex;gap:12px;align-items:center}
+.logo{flex:none;width:58px;height:44px;border-radius:6px;background:var(--slate);display:grid;place-items:center}
+.sheet .tt{font:600 15px/1.3 var(--f-head);color:var(--slate)}
+.sheet h3{text-align:center;font:600 18px var(--f-head);color:var(--slate);margin:16px 0 6px}
+.sheet h4{font:600 15px var(--f-head);color:var(--slate);margin:16px 0 4px}
+.ln{display:flex;justify-content:space-between;gap:12px;padding:3px 0;color:var(--muted)}
+.ln span:first-child{min-width:0}
+.ln.open .v{color:var(--muted);font-weight:400;font-style:italic}
+.ln.big{color:var(--fg);font-weight:600;font-size:16px;border-top:1px solid var(--line);margin-top:6px;padding-top:8px}
+.ln.sub{font-size:13px}
+.note{font-size:12px;color:var(--muted);margin-top:12px}
+.banner{background:var(--out-soft);color:var(--fg);border-radius:8px;padding:10px 12px;font-size:13px;margin-top:12px}
+.restore{display:grid;gap:8px;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">Condomínio do Edifício Caiapó<small>83 · 85 · 87 — Controle financeiro</small></div>
+  <div class="tabs" role="tablist">
+    <button id="tab-lancar" role="tab" aria-selected="true">Lançar</button>
+    <button id="tab-bal" role="tab" aria-selected="false">Balancete</button>
+  </div>
+  <div class="month">
+    <button class="iconbtn" id="prev" aria-label="Mês anterior">‹</button>
+    <b id="mlabel">—</b>
+    <button class="iconbtn" id="next" aria-label="Próximo mês">›</button>
+  </div>
+</header>
+
+<div id="status" class="banner" hidden></div>
+
+<main id="p-lancar">
+  <section>
+    <h2>Cotas do mês</h2>
+    <p class="hint">Toque numa unidade em aberto e toque de novo para confirmar o pagamento.</p>
+    <div class="units" id="units"></div>
+  </section>
+
+  <section>
+    <h2>Novo lançamento</h2>
+    <div class="card form">
+      <div class="seg" role="group" aria-label="Tipo">
+        <button data-t="receita" aria-pressed="false">Outra receita</button>
+        <button data-t="despesa" aria-pressed="true">Despesa</button>
+        <button data-t="cota" aria-pressed="false">Cota</button>
+      </div>
+      <label id="lDesc">Descrição<input id="fDesc" placeholder="Ex.: Águas do Rio" autocomplete="off" list="sugestoes"></label>
+      <datalist id="sugestoes"></datalist>
+      <label id="lUnit" hidden>Unidade<select id="fUnit"></select></label>
+      <div class="row2">
+        <label>Valor (R$)<input id="fVal" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
+        <label>Mês<input id="fMes" type="month"></label>
+      </div>
+      <button class="primary" id="add">Adicionar</button>
+      <p class="msg" id="fMsg" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="listTitle">Lançamentos do mês</h2>
+    <div class="card"><ul class="list" id="list"></ul></div>
+  </section>
+
+  <section>
+    <h2>Backup</h2>
+    <div class="card form">
+      <p class="hint" id="bkInfo">Os dados ficam só neste celular. Faça backup com frequência e guarde o arquivo no Drive ou no WhatsApp.</p>
+      <div class="btns">
+        <button class="primary" id="bkSave">Salvar backup</button>
+        <button class="ghost" id="bkShare">Enviar backup</button>
+      </div>
+      <button class="ghost" id="bkOpen">Restaurar de um backup</button>
+      <div class="restore" id="bkConfirm" hidden>
+        <p class="msg" id="bkSummary"></p>
+        <div class="btns"><button class="danger" id="bkApply">Substituir dados</button><button class="ghost" id="bkCancel">Cancelar</button></div>
+      </div>
+      <p class="msg" id="bkMsg" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Configurações</h2>
+    <div class="card form">
+      <p class="hint">O saldo inicial é o caixa no começo do primeiro mês controlado. Os meses seguintes herdam o saldo automaticamente.</p>
+      <div class="row2">
+        <label>Saldo inicial (R$)<input id="cSaldo" inputmode="decimal"></label>
+        <label>Primeiro mês<input id="cMes" type="month"></label>
+      </div>
+      <label>Valor da cota (R$)<input id="cCota" inputmode="decimal"></label>
+      <button class="primary" id="saveCfg">Salvar configurações</button>
+      <p class="msg" id="cMsg" aria-live="polite"></p>
+    </div>
+  </section>
+</main>
+
+<main id="p-bal" hidden>
+  <section>
+    <div class="sheet" id="sheet"></div>
+    <div class="btns" style="margin-top:12px">
+      <button class="primary" id="shImg">Compartilhar imagem</button>
+      <button class="ghost" id="shTxt">Compartilhar texto</button>
+    </div>
+    <p class="msg" id="shMsg" aria-live="polite"></p>
+  </section>
+</main>
+</div>
+
+<script src="seed.js"></script>
+<script src="html2canvas.min.js"></script>
+<script>
+const UNITS=[
+ ["83-101","83 - Ap. 101"],["83-201","83 - Ap. 201"],
+ ["85-01-101","85 - C. 01 - Ap. 101"],["85-01-201","85 - C. 01 - Ap. 201"],
+ ["85-02-101","85 - C. 02 - Ap. 101"],["85-02-201","85 - C. 02 - Ap. 201"],
+ ["85-03-101","85 - C. 03 - Ap. 101"],["85-03-201","85 - C. 03 - Ap. 201"],
+ ["85-04-101","85 - C. 04 - Ap. 101"],["85-04-201","85 - C. 04 - Ap. 201"],
+ ["85-05-101","85 - C. 05 - Ap. 101"],["85-05-201","85 - C. 05 - Ap. 201"],
+ ["87-101","87 - Ap. 101"],["87-201","87 - Ap. 201"]];
+const UNAME=Object.fromEntries(UNITS);
+const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const $=id=>document.getElementById(id);
+const NATIVE=typeof window.Android!=="undefined";
+const brl=c=>(c<0?"− ":"")+"R$ "+(Math.abs(c)/100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtIn=c=>(c/100).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+function parseMoney(s){s=String(s||"").trim().replace(/[R$\s]/g,"");if(!s)return NaN;
+  if(s.includes(","))s=s.replace(/\./g,"").replace(",",".");const n=Number(s);return isFinite(n)?Math.round(n*100):NaN}
+const mLabel=m=>{const[y,mm]=m.split("-");return MESES[+mm-1]+" "+y};
+const shift=(m,d)=>{let[y,mm]=m.split("-").map(Number);mm+=d;while(mm<1){mm+=12;y--}while(mm>12){mm-=12;y++}return y+"-"+String(mm).padStart(2,"0")};
+const nowM=(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")})();
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+/* ---------- armazenamento ---------- */
+let data;
+function valid(d){return d&&typeof d==="object"&&d.config&&Array.isArray(d.lancamentos)}
+function load(){
+  let raw="";
+  try{raw=NATIVE?Android.loadData():(localStorage.getItem("caiapo-dados")||"")}catch(e){}
+  if(raw){try{const d=JSON.parse(raw);if(valid(d))return d}catch(e){}}
+  return JSON.parse(JSON.stringify(window.SEED||{config:{saldoInicial:0,mesInicial:nowM,cota:22000},lancamentos:[]}));
+}
+function persist(){
+  const s=JSON.stringify(data);let ok=true;
+  try{ok=NATIVE?Android.saveData(s):(localStorage.setItem("caiapo-dados",s),true)}catch(e){ok=false}
+  if(!ok)showStatus("Não foi possível salvar no celular. Verifique o espaço livre e tente de novo.");
+  return ok;
+}
+data=load();
+let ui={mes:null,tipo:"despesa"};
+const mesesComDados=()=>[...new Set(data.lancamentos.map(e=>e.mes))].sort();
+ui.mes=mesesComDados().includes(nowM)||!data.lancamentos.length?nowM:mesesComDados().pop();
+
+/* ---------- cálculo ---------- */
+const doMes=m=>data.lancamentos.filter(e=>e.mes===m);
+function somas(list){let rec=0,des=0;for(const e of list){if(e.tipo==="despesa")des+=e.valor;else rec+=e.valor}return{rec,des}}
+function saldoAnterior(m){const c=data.config;if(!c.mesInicial||m<c.mesInicial)return null;
+  let s=c.saldoInicial||0;for(const e of data.lancamentos)if(e.mes>=c.mesInicial&&e.mes<m)s+=e.tipo==="despesa"?-e.valor:e.valor;return s}
+function pagos(me){const p={};for(const e of me)if(e.tipo==="cota")p[e.unidade]=(p[e.unidade]||0)+e.valor;return p}
+
+/* ---------- tela ---------- */
+function render(){
+  $("mlabel").textContent=mLabel(ui.mes);
+  if($("fMes").dataset.follow!=="0")$("fMes").value=ui.mes;
+  $("listTitle").textContent="Lançamentos de "+mLabel(ui.mes);
+  const me=doMes(ui.mes),pg=pagos(me),cota=data.config.cota||22000;
+  const box=$("units");box.innerHTML="";
+  for(const[id,name]of UNITS){
+    const b=document.createElement("button");b.type="button";b.className="unit"+(pg[id]?" paid":"");
+    const n=document.createElement("span");n.textContent=name;
+    const s=document.createElement("span");s.className="st";s.textContent=pg[id]?brl(pg[id]):"+ "+fmtIn(cota);
+    b.append(n,s);
+    if(!pg[id]){let t;b.onclick=()=>{
+      if(!b.classList.contains("arm")){document.querySelectorAll(".unit.arm").forEach(x=>{x.classList.remove("arm");x.lastChild.textContent="+ "+fmtIn(cota)});
+        b.classList.add("arm");s.textContent="Confirmar";t=setTimeout(()=>{b.classList.remove("arm");s.textContent="+ "+fmtIn(cota)},4000);return}
+      clearTimeout(t);adicionar({tipo:"cota",unidade:id,descricao:name,valor:cota,mes:ui.mes})}}
+    box.append(b)}
+  const ul=$("list");ul.innerHTML="";
+  const ord={cota:0,receita:1,despesa:2},ui_=u=>UNITS.findIndex(x=>x[0]===u);
+  const lista=[...me].sort((a,b)=>ord[a.tipo]-ord[b.tipo]||(a.tipo==="cota"?ui_(a.unidade)-ui_(b.unidade):(a.criadoEm||0)-(b.criadoEm||0)));
+  if(!lista.length){const li=document.createElement("li");li.className="empty";li.textContent="Nenhum lançamento neste mês. Registre as cotas acima ou adicione uma receita ou despesa.";ul.append(li)}
+  for(const e of lista){
+    const li=document.createElement("li");
+    const d=document.createElement("div");d.className="d";
+    const sm=document.createElement("small");sm.textContent=e.tipo==="cota"?"Cota":e.tipo==="receita"?"Outra receita":"Despesa";
+    d.append(sm,document.createTextNode(e.tipo==="cota"?(UNAME[e.unidade]||e.descricao):e.descricao));
+    const v=document.createElement("span");v.className="v "+(e.tipo==="despesa"?"out":"in");v.textContent=brl(e.valor);
+    const x=document.createElement("button");x.type="button";x.className="del";x.textContent="Excluir";
+    let t;x.onclick=()=>{if(!x.classList.contains("arm")){x.classList.add("arm");x.textContent="Confirmar";t=setTimeout(()=>{x.classList.remove("arm");x.textContent="Excluir"},4000);return}
+      clearTimeout(t);const antes=data.lancamentos;data.lancamentos=antes.filter(y=>y.id!==e.id);if(!persist())data.lancamentos=antes;render()};
+    li.append(d,v,x);ul.append(li)}
+  const sug=[...new Set(data.lancamentos.filter(e=>e.tipo!=="cota").map(e=>e.descricao))].sort();
+  $("sugestoes").innerHTML="";for(const s of sug){const o=document.createElement("option");o.value=s;$("sugestoes").append(o)}
+  bkInfo();renderSheet();
+}
+
+function linha(label,val,cls,extra){const d=document.createElement("div");d.className="ln"+(extra?" "+extra:"");
+  const a=document.createElement("span");a.textContent=label;const b=document.createElement("span");b.className="v "+(cls||"");b.textContent=val;d.append(a,b);return d}
+function balancete(m){
+  const me=doMes(m),{rec,des}=somas(me),sa=saldoAnterior(m),pg=pagos(me);
+  const outras=me.filter(e=>e.tipo==="receita").sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+  const desp=me.filter(e=>e.tipo==="despesa").sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
+  const totRec=rec+(sa||0);return{me,rec,des,sa,pg,outras,desp,totRec,fin:totRec-des,abertas:UNITS.filter(u=>!pg[u[0]]).length}
+}
+function renderSheet(){
+  const m=ui.mes,[y,mm]=m.split("-"),B=balancete(m),sh=$("sheet");sh.innerHTML="";
+  const top=document.createElement("div");top.className="top";
+  top.innerHTML='<div class="logo" aria-hidden="true"><svg width="44" height="26" viewBox="0 0 44 26"><g fill="#fff"><path d="M2 12 11 4l9 8v12H2z"/><path d="M13 12l9-8 9 8v12H13z" opacity=".85"/><path d="M24 12l9-8 9 8v12H24z"/></g></svg></div>';
+  const tt=document.createElement("div");tt.className="tt";tt.innerHTML="Condomínio do Edifício Caiapó 83, 85 e 87<br>Balancete Mensal | Exercício "+y;top.append(tt);sh.append(top);
+  const h=document.createElement("h3");h.textContent=MESES[+mm-1];sh.append(h);
+  const h4=t=>{const e=document.createElement("h4");e.textContent=t;sh.append(e)};
+  h4("1. Controle de Pagamento e Receitas Recebidas");
+  for(const[id,name]of UNITS)sh.append(B.pg[id]?linha(name,brl(B.pg[id]),"in"):linha(name,"em aberto","","open"));
+  sh.append(B.sa==null?linha("Saldo Anterior em Caixa","—","","open"):linha("Saldo Anterior em Caixa",brl(B.sa),B.sa<0?"out":"in"));
+  if(!B.outras.length)sh.append(linha("Outras Receitas","—","","open"));
+  for(const e of B.outras)sh.append(linha(e.descricao,brl(e.valor),"in"));
+  h4("2. Despesas Pagas");
+  if(!B.desp.length)sh.append(linha("Nenhuma despesa lançada","—","","open"));
+  for(const e of B.desp)sh.append(linha(e.descricao,brl(e.valor),"out"));
+  h4("3. Apuração do Resultado Mensal");
+  sh.append(linha("Total de Receitas",brl(B.totRec),"in"));
+  sh.append(linha("Total de Despesas",brl(B.des),"out"));
+  sh.append(linha("Saldo Final em Caixa",brl(B.fin),B.fin<0?"out":"in","big"));
+  sh.append(linha("Resultado do mês (sem saldo anterior)",brl(B.rec-B.des),B.rec-B.des<0?"out":"in","sub"));
+  const n=document.createElement("p");n.className="note";
+  n.textContent=(B.abertas?B.abertas+(B.abertas>1?" unidades em aberto. ":" unidade em aberto. "):"Todas as cotas pagas. ")+(B.sa==null?"Mês anterior ao início do controle: sem saldo anterior.":"Total de Receitas inclui o saldo anterior.");
+  sh.append(n);
+}
+function balanceteTexto(m){
+  const[y,mm]=m.split("-"),B=balancete(m),L=[];
+  L.push("*Condomínio do Edifício Caiapó 83, 85 e 87*","Balancete Mensal | "+MESES[+mm-1]+" "+y,"","*1. Controle de Pagamento e Receitas Recebidas*");
+  for(const[id,name]of UNITS)L.push(name+": "+(B.pg[id]?brl(B.pg[id]):"em aberto"));
+  L.push("Saldo Anterior em Caixa: "+(B.sa==null?"—":brl(B.sa)));
+  for(const e of B.outras)L.push(e.descricao+": "+brl(e.valor));
+  L.push("","*2. Despesas Pagas*");for(const e of B.desp)L.push(e.descricao+": "+brl(e.valor));if(!B.desp.length)L.push("Nenhuma despesa lançada");
+  L.push("","*3. Apuração do Resultado Mensal*","Total de Receitas: "+brl(B.totRec),"Total de Despesas: "+brl(B.des),"*Saldo Final em Caixa: "+brl(B.fin)+"*","Resultado do mês: "+brl(B.rec-B.des));
+  return L.join("\n");
+}
+
+let stT;function showStatus(t){$("status").textContent=t;$("status").hidden=false;clearTimeout(stT);stT=setTimeout(()=>$("status").hidden=true,6000)}
+
+function adicionar(e){
+  const novo={id:uid(),criadoEm:Date.now(),...e};
+  data.lancamentos.push(novo);
+  if(!persist()){data.lancamentos.pop();return false}
+  render();return true;
+}
+
+/* ---------- formulário ---------- */
+function setTipo(t){ui.tipo=t;document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.t===t));
+  $("lDesc").hidden=t==="cota";$("lUnit").hidden=t!=="cota";
+  if(t==="cota"&&!$("fVal").value)$("fVal").value=fmtIn(data.config.cota||22000)}
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTipo(b.dataset.t));
+$("fUnit").innerHTML=UNITS.map(([id,n])=>'<option value="'+id+'">'+n+'</option>').join("");
+$("fMes").addEventListener("change",()=>$("fMes").dataset.follow="0");
+$("add").onclick=()=>{
+  const msg=$("fMsg");msg.className="msg";msg.textContent="";
+  const valor=parseMoney($("fVal").value),mes=$("fMes").value,t=ui.tipo;
+  const desc=t==="cota"?UNAME[$("fUnit").value]:$("fDesc").value.trim();
+  if(t!=="cota"&&!desc){msg.className="msg err";msg.textContent="Informe a descrição.";$("fDesc").focus();return}
+  if(!(valor>0)){msg.className="msg err";msg.textContent="Informe um valor maior que zero, por exemplo 130,64.";$("fVal").focus();return}
+  if(!/^\d{4}-\d{2}$/.test(mes)){msg.className="msg err";msg.textContent="Escolha o mês do lançamento.";return}
+  if(adicionar({tipo:t,descricao:desc,valor,mes,...(t==="cota"?{unidade:$("fUnit").value}:{})})){
+    msg.className="msg ok";msg.textContent="Lançado em "+mLabel(mes)+": "+desc+", "+brl(valor)+".";
+    $("fDesc").value="";$("fVal").value=t==="cota"?fmtIn(data.config.cota||22000):""}
+};
+
+/* ---------- configurações ---------- */
+function fillCfg(){const c=data.config;$("cSaldo").value=fmtIn(c.saldoInicial||0);$("cMes").value=c.mesInicial||"";$("cCota").value=fmtIn(c.cota||22000)}
+$("saveCfg").onclick=()=>{
+  const m=$("cMsg"),s=parseMoney($("cSaldo").value),c=parseMoney($("cCota").value),mi=$("cMes").value;
+  if(!isFinite(s)||!(c>0)||!/^\d{4}-\d{2}$/.test(mi)){m.className="msg err";m.textContent="Preencha saldo inicial, primeiro mês e valor da cota.";return}
+  const antes=data.config;data.config={...antes,saldoInicial:s,mesInicial:mi,cota:c};
+  if(persist()){m.className="msg ok";m.textContent="Configurações salvas.";render()}else data.config=antes;
+};
+
+/* ---------- backup ---------- */
+const hoje=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+function bkInfo(){const u=data.config.ultimoBackup;$("bkInfo").textContent="Os dados ficam só neste celular. "+(u?"Último backup: "+u.split("-").reverse().join("/")+". ":"Nenhum backup feito ainda. ")+"Guarde o arquivo no Drive ou no WhatsApp."}
+function marcaBackup(){data.config={...data.config,ultimoBackup:hoje()};persist();bkInfo()}
+function bkTexto(){return JSON.stringify({app:"condominio-caiapo",versao:1,geradoEm:new Date().toISOString(),...data},null,1)}
+const bkNome=()=>"backup-condominio-caiapo-"+hoje()+".json";
+$("bkSave").onclick=()=>{if(!NATIVE){$("bkMsg").textContent="Disponível no app instalado.";return}marcaBackup();Android.saveBackup(bkTexto(),bkNome())};
+$("bkShare").onclick=()=>{if(!NATIVE){$("bkMsg").textContent="Disponível no app instalado.";return}marcaBackup();Android.shareBackup(bkTexto(),bkNome())};
+let restaurar=null;
+$("bkOpen").onclick=()=>{$("bkMsg").textContent="";if(!NATIVE){$("bkMsg").textContent="Disponível no app instalado.";return}Android.openBackup()};
+window.backupCarregado=txt=>{
+  const m=$("bkMsg");m.className="msg";if(!txt){m.textContent="";return}
+  let d;try{d=JSON.parse(txt)}catch(e){}
+  if(!valid(d)){m.className="msg err";m.textContent="Esse arquivo não é um backup deste app.";return}
+  restaurar={config:d.config,lancamentos:d.lancamentos};
+  const ms=[...new Set(d.lancamentos.map(e=>e.mes))].sort();
+  $("bkSummary").textContent="Backup com "+d.lancamentos.length+" lançamentos"+(ms.length?", de "+mLabel(ms[0])+" a "+mLabel(ms[ms.length-1]):"")+". Os dados atuais deste celular serão substituídos.";
+  $("bkConfirm").hidden=false;
+};
+$("bkCancel").onclick=()=>{restaurar=null;$("bkConfirm").hidden=true};
+$("bkApply").onclick=()=>{if(!restaurar)return;const antes=data;data=restaurar;
+  if(persist()){restaurar=null;$("bkConfirm").hidden=true;$("bkMsg").className="msg ok";$("bkMsg").textContent="Backup restaurado.";fillCfg();render()}else data=antes};
+
+/* ---------- compartilhar ---------- */
+$("shTxt").onclick=()=>{const t=balanceteTexto(ui.mes);if(NATIVE)Android.shareText(t);else{navigator.clipboard&&navigator.clipboard.writeText(t);$("shMsg").textContent="Texto copiado."}};
+$("shImg").onclick=async()=>{
+  const m=$("shMsg");m.className="msg";
+  if(!window.html2canvas){m.className="msg err";m.textContent="Geração de imagem indisponível. Use Compartilhar texto.";return}
+  m.textContent="Gerando imagem…";$("shImg").disabled=true;
+  try{const bg=getComputedStyle($("sheet")).backgroundColor;
+    const cv=await html2canvas($("sheet"),{scale:2,backgroundColor:bg});
+    const b64=cv.toDataURL("image/png").split(",")[1];
+    if(NATIVE)Android.shareImage(b64,"balancete-"+ui.mes+".png");m.textContent=""}
+  catch(e){m.className="msg err";m.textContent="Não foi possível gerar a imagem. Use Compartilhar texto."}
+  $("shImg").disabled=false};
+
+/* ---------- navegação ---------- */
+function go(d){ui.mes=shift(ui.mes,d);$("fMes").dataset.follow="1";render();window.scrollTo(0,0)}
+$("prev").onclick=()=>go(-1);$("next").onclick=()=>go(1);
+function selTab(w){const l=w==="lancar";$("tab-lancar").setAttribute("aria-selected",l);$("tab-bal").setAttribute("aria-selected",!l);$("p-lancar").hidden=!l;$("p-bal").hidden=l;window.scrollTo(0,0)}
+$("tab-lancar").onclick=()=>selTab("lancar");$("tab-bal").onclick=()=>selTab("bal");
+window.voltar=()=>{if(!$("p-bal").hidden){selTab("lancar");return true}return false};
+
+fillCfg();setTipo("despesa");render();
+if(!NATIVE||!Android.loadData())persist();
+</script>
+</body>
+</html>
