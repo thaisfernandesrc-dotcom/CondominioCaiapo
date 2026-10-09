@@ -66,7 +66,30 @@ button:disabled{opacity:.5}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px 16px 20px}
 .sheet .top{display:flex;gap:12px;align-items:center}
-.logo{flex:none;width:58px;height:44px;border-radius:6px;background:var(--slate);display:grid;place-items:center}
+.logo{flex:none;width:72px;height:48px;border-radius:7px;background:#5d7391;display:grid;place-items:center}
+.list .acts{display:flex;gap:6px;align-items:center}
+.rec-btn{border:1px solid var(--slate);background:transparent;color:var(--slate);border-radius:8px;padding:7px 10px;font:500 12px var(--f-body);white-space:nowrap}
+.overlay{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto}
+.overlay .wrap{padding-top:calc(env(safe-area-inset-top,0px) + 12px)}
+.ovh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.ovh b{font:600 17px var(--f-head);color:var(--slate)}
+.recibo{background:#fff;color:#3c4652;border-radius:6px;padding:22px 18px 24px;border:1px solid var(--line)}
+.recibo .top{display:flex;gap:14px;align-items:center}
+.recibo .tt{font:600 15px/1.35 var(--f-head);color:#5d7391}
+.recibo .tt span{color:#7d8794}
+.recibo p{margin:22px 0 18px;font-size:15px;line-height:1.5;color:#555e69}
+.recibo dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0;font-size:15px}
+.recibo dt{font-weight:600;color:#555e69}
+.recibo dd{margin:0;font-weight:600;color:#5d7391;min-width:0;overflow-wrap:anywhere}
+.recibo .ass{margin-top:30px;text-align:center}
+.recibo .ass img{height:64px;max-width:70%;display:block;margin:0 auto 2px;object-fit:contain}
+.recibo .ass .linha{height:64px;border-bottom:1px solid #aab3be;width:60%;margin:0 auto 6px}
+.recibo .ass b{display:block;color:#5d7391;font-size:14px}
+.recibo .ass small{display:block;color:#7d8794;font-size:14px}
+.pad{width:100%;height:150px;background:#fff;border:1px dashed var(--muted);border-radius:8px;touch-action:none;display:block}
+.sigprev{background:#fff;border:1px solid var(--line);border-radius:8px;min-height:70px;display:grid;place-items:center;color:#7d8794;font-size:13px}
+.sigprev img{max-height:70px;max-width:90%}
+.mor{display:grid;gap:8px}
 .sheet .tt{font:600 15px/1.3 var(--f-head);color:var(--slate)}
 .sheet h3{text-align:center;font:600 18px var(--f-head);color:var(--slate);margin:16px 0 6px}
 .sheet h4{font:600 15px var(--f-head);color:var(--slate);margin:16px 0 4px}
@@ -100,7 +123,7 @@ button:disabled{opacity:.5}
 <main id="p-lancar">
   <section>
     <h2>Cotas do mês</h2>
-    <p class="hint">Toque numa unidade em aberto e toque de novo para confirmar o pagamento.</p>
+    <p class="hint">Toque numa unidade em aberto e toque de novo para confirmar o pagamento. Toque numa unidade paga para emitir o recibo.</p>
     <div class="units" id="units"></div>
   </section>
 
@@ -147,6 +170,27 @@ button:disabled{opacity:.5}
   </section>
 
   <section>
+    <h2>Recibos</h2>
+    <div class="card form">
+      <label>Nome da síndica<input id="cSind" autocomplete="off"></label>
+      <div style="display:grid;gap:6px">
+        <span class="hint" style="margin:0">ASSINATURA</span>
+        <div class="sigprev" id="sigPrev">Nenhuma assinatura. O recibo sai com uma linha para assinar.</div>
+        <div class="btns"><button class="ghost" id="sigNew">Assinar com o dedo</button><button class="ghost" id="sigDel">Remover</button></div>
+        <div id="sigBox" hidden style="display:grid;gap:8px">
+          <canvas class="pad" id="pad"></canvas>
+          <div class="btns"><button class="primary" id="sigOk">Usar esta assinatura</button><button class="ghost" id="sigClr">Limpar</button></div>
+        </div>
+      </div>
+      <details><summary class="hint" style="margin:0;color:var(--slate);font-weight:600">Pagadores por unidade</summary>
+        <div class="mor" id="mor" style="margin-top:10px"></div>
+      </details>
+      <button class="primary" id="saveRec">Salvar dados dos recibos</button>
+      <p class="msg" id="rMsg" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section>
     <h2>Configurações</h2>
     <div class="card form">
       <p class="hint">O saldo inicial é o caixa no começo do primeiro mês controlado. Os meses seguintes herdam o saldo automaticamente.</p>
@@ -173,9 +217,22 @@ button:disabled{opacity:.5}
 </main>
 </div>
 
+<div class="overlay" id="ov" hidden>
+  <div class="wrap">
+    <div class="ovh"><b>Recibo</b><button class="iconbtn" id="ovClose" aria-label="Fechar">✕</button></div>
+    <div class="recibo" id="recibo"></div>
+    <div class="card form" style="margin-top:12px">
+      <label>Pagador(a)<input id="rPag" autocomplete="off" placeholder="Nome do responsável financeiro"></label>
+      <div class="btns"><button class="primary" id="rImg">Compartilhar imagem</button><button class="ghost" id="rTxt">Compartilhar texto</button></div>
+      <p class="msg" id="rShMsg" aria-live="polite"></p>
+    </div>
+  </div>
+</div>
+
 <script src="seed.js"></script>
 <script src="html2canvas.min.js"></script>
 <script>
+const LOGO='<svg width="58" height="40" viewBox="0 0 58 40" aria-hidden="true"><g fill="#fff"><path d="M4 13 12 6l8 7v11H4z"/><path d="M19 12l10-8 10 8v12H19z"/><path d="M38 13l8-7 8 7v11H38z"/></g><g fill="#5d7391"><path d="M10 24v-5a2 2 0 0 1 4 0v5z"/><path d="M27 24v-6a2 2 0 0 1 4 0v6z"/><path d="M44 24v-5a2 2 0 0 1 4 0v5z"/></g><text x="29" y="31.5" text-anchor="middle" font-size="5.2" font-weight="600" fill="#fff" font-family="Roboto,sans-serif">Condomínio Caiapó</text><text x="29" y="37.5" text-anchor="middle" font-size="4.6" fill="#fff" font-family="Roboto,sans-serif">83 | 85 | 87</text></svg>';
 const UNITS=[
  ["83-101","83 - Ap. 101"],["83-201","83 - Ap. 201"],
  ["85-01-101","85 - C. 01 - Ap. 101"],["85-01-201","85 - C. 01 - Ap. 201"],
@@ -236,6 +293,7 @@ function render(){
     const n=document.createElement("span");n.textContent=name;
     const s=document.createElement("span");s.className="st";s.textContent=pg[id]?brl(pg[id]):"+ "+fmtIn(cota);
     b.append(n,s);
+    if(pg[id]){const e=me.find(y=>y.tipo==="cota"&&y.unidade===id);b.onclick=()=>abrirRecibo(e)}
     if(!pg[id]){let t;b.onclick=()=>{
       if(!b.classList.contains("arm")){document.querySelectorAll(".unit.arm").forEach(x=>{x.classList.remove("arm");x.lastChild.textContent="+ "+fmtIn(cota)});
         b.classList.add("arm");s.textContent="Confirmar";t=setTimeout(()=>{b.classList.remove("arm");s.textContent="+ "+fmtIn(cota)},4000);return}
@@ -254,7 +312,9 @@ function render(){
     const x=document.createElement("button");x.type="button";x.className="del";x.textContent="Excluir";
     let t;x.onclick=()=>{if(!x.classList.contains("arm")){x.classList.add("arm");x.textContent="Confirmar";t=setTimeout(()=>{x.classList.remove("arm");x.textContent="Excluir"},4000);return}
       clearTimeout(t);const antes=data.lancamentos;data.lancamentos=antes.filter(y=>y.id!==e.id);if(!persist())data.lancamentos=antes;render()};
-    li.append(d,v,x);ul.append(li)}
+    const acts=document.createElement("span");acts.className="acts";
+    if(e.tipo==="cota"){const r=document.createElement("button");r.type="button";r.className="rec-btn";r.textContent="Recibo";r.onclick=()=>abrirRecibo(e);acts.append(r)}
+    acts.append(x);li.append(d,v,acts);ul.append(li)}
   const sug=[...new Set(data.lancamentos.filter(e=>e.tipo!=="cota").map(e=>e.descricao))].sort();
   $("sugestoes").innerHTML="";for(const s of sug){const o=document.createElement("option");o.value=s;$("sugestoes").append(o)}
   bkInfo();renderSheet();
@@ -271,7 +331,7 @@ function balancete(m){
 function renderSheet(){
   const m=ui.mes,[y,mm]=m.split("-"),B=balancete(m),sh=$("sheet");sh.innerHTML="";
   const top=document.createElement("div");top.className="top";
-  top.innerHTML='<div class="logo" aria-hidden="true"><svg width="44" height="26" viewBox="0 0 44 26"><g fill="#fff"><path d="M2 12 11 4l9 8v12H2z"/><path d="M13 12l9-8 9 8v12H13z" opacity=".85"/><path d="M24 12l9-8 9 8v12H24z"/></g></svg></div>';
+  top.innerHTML='<div class="logo">'+LOGO+'</div>';
   const tt=document.createElement("div");tt.className="tt";tt.innerHTML="Condomínio do Edifício Caiapó 83, 85 e 87<br>Balancete Mensal | Exercício "+y;top.append(tt);sh.append(top);
   const h=document.createElement("h3");h.textContent=MESES[+mm-1];sh.append(h);
   const h4=t=>{const e=document.createElement("h4");e.textContent=t;sh.append(e)};
@@ -361,7 +421,7 @@ window.backupCarregado=txt=>{
 };
 $("bkCancel").onclick=()=>{restaurar=null;$("bkConfirm").hidden=true};
 $("bkApply").onclick=()=>{if(!restaurar)return;const antes=data;data=restaurar;
-  if(persist()){restaurar=null;$("bkConfirm").hidden=true;$("bkMsg").className="msg ok";$("bkMsg").textContent="Backup restaurado.";fillCfg();render()}else data=antes};
+  if(persist()){restaurar=null;$("bkConfirm").hidden=true;$("bkMsg").className="msg ok";$("bkMsg").textContent="Backup restaurado.";fillCfg();fillRec();render()}else data=antes};
 
 /* ---------- compartilhar ---------- */
 $("shTxt").onclick=()=>{const t=balanceteTexto(ui.mes);if(NATIVE)Android.shareText(t);else{navigator.clipboard&&navigator.clipboard.writeText(t);$("shMsg").textContent="Texto copiado."}};
@@ -376,14 +436,99 @@ $("shImg").onclick=async()=>{
   catch(e){m.className="msg err";m.textContent="Não foi possível gerar a imagem. Use Compartilhar texto."}
   $("shImg").disabled=false};
 
+
+/* ---------- recibos ---------- */
+const SIND_PADRAO="Thaís Fernandes Rodrigues da Conceição";
+function extenso(c){
+  const U=["","um","dois","três","quatro","cinco","seis","sete","oito","nove","dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
+  const D=["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
+  const C=["","cento","duzentos","trezentos","quatrocentos","quinhentos","seiscentos","setecentos","oitocentos","novecentos"];
+  const ate999=n=>{if(n===0)return"";if(n===100)return"cem";const p=[];const c=Math.floor(n/100),r=n%100;if(c)p.push(C[c]);
+    if(r){if(r<20)p.push(U[r]);else{const d=Math.floor(r/10),u=r%10;p.push(u?D[d]+" e "+U[u]:D[d])}}return p.join(" e ")};
+  const inteiro=n=>{if(n===0)return"zero";const g=[Math.floor(n/1e6),Math.floor(n/1000)%1000,n%1000],p=[];
+    if(g[0])p.push({t:g[0]===1?"um milhão":ate999(g[0])+" milhões",v:g[0]});
+    if(g[1])p.push({t:g[1]===1?"mil":ate999(g[1])+" mil",v:g[1]});
+    if(g[2])p.push({t:ate999(g[2]),v:g[2]});
+    return p.map((x,i)=>i===0?x.t:((i===p.length-1&&(x.v<100||x.v%100===0))?"e ":"")+x.t).join(" ")};
+  const reais=Math.floor(c/100),cent=c%100,partes=[];
+  if(reais){let t=inteiro(reais);if(reais%1e6===0)t+=" de";partes.push(t+(reais===1?" real":" reais"))}
+  if(cent)partes.push(inteiro(cent)+(cent===1?" centavo":" centavos"));
+  return partes.join(" e ")||"zero reais";
+}
+const brlRec=c=>"R$"+fmtIn(c);
+let recAtual=null;
+function pagadorDe(e){return (e.pagador)||((data.config.moradores||{})[e.unidade])||""}
+function dadosRecibo(e){const[y,mm]=e.mes.split("-");return{unidade:UNAME[e.unidade]||e.descricao,comp:MESES[+mm-1]+" de "+y,
+  valor:brlRec(e.valor)+" ("+extenso(e.valor)+")",pagador:$("rPag").value.trim(),sind:data.config.sindica||SIND_PADRAO,ass:data.config.assinatura||""}}
+function renderRecibo(){
+  const e=recAtual;if(!e)return;const R=dadosRecibo(e),box=$("recibo");box.innerHTML="";
+  const top=document.createElement("div");top.className="top";top.innerHTML='<div class="logo">'+LOGO+'</div>';
+  const tt=document.createElement("div");tt.className="tt";tt.innerHTML='Condomínio do Edifício Caiapó 83, 85 e 87<br><span>Recibo de Pagamento | Cota Condominial</span>';top.append(tt);box.append(top);
+  const p=document.createElement("p");p.textContent="Declaro para os devidos fins que recebi do(a) responsável financeiro(a) pela unidade abaixo identificada o pagamento da taxa condominial mensal, conforme discriminado a seguir:";box.append(p);
+  const dl=document.createElement("dl");
+  for(const[k,v]of[["Unidade:",R.unidade],["Competência:",R.comp],["Valor Pago:",R.valor],["Pagador(a):",R.pagador||"—"]]){const dt=document.createElement("dt");dt.textContent=k;const dd=document.createElement("dd");dd.textContent=v;dl.append(dt,dd)}
+  box.append(dl);
+  const a=document.createElement("div");a.className="ass";
+  if(R.ass){const i=document.createElement("img");i.src=R.ass;i.alt="Assinatura";a.append(i)}else{const l=document.createElement("div");l.className="linha";a.append(l)}
+  const b=document.createElement("b");b.textContent=R.sind;const sm=document.createElement("small");sm.textContent="Síndica do Condomínio Caiapó 83, 85 e 87";a.append(b,sm);box.append(a);
+}
+function abrirRecibo(e){if(!e)return;recAtual=e;$("rPag").value=pagadorDe(e);$("rShMsg").textContent="";renderRecibo();$("ov").hidden=false;$("ov").scrollTop=0}
+function guardaPagador(){const e=recAtual;if(!e)return;const nome=$("rPag").value.trim();if(nome===pagadorDe(e))return;
+  const i=data.lancamentos.findIndex(y=>y.id===e.id);if(i<0)return;const antes=data.lancamentos[i];
+  data.lancamentos[i]={...antes,pagador:nome};const mor={...(data.config.moradores||{})};if(nome&&!mor[e.unidade]){mor[e.unidade]=nome;data.config={...data.config,moradores:mor}}
+  if(persist()){recAtual=data.lancamentos[i];fillRec()}else data.lancamentos[i]=antes}
+function fecharRecibo(){guardaPagador();$("ov").hidden=true;recAtual=null}
+$("ovClose").onclick=fecharRecibo;
+$("rPag").addEventListener("input",renderRecibo);
+$("rPag").addEventListener("change",guardaPagador);
+function reciboTexto(){const R=dadosRecibo(recAtual);return["*Condomínio do Edifício Caiapó 83, 85 e 87*","Recibo de Pagamento | Cota Condominial","",
+  "Declaro para os devidos fins que recebi do(a) responsável financeiro(a) pela unidade abaixo identificada o pagamento da taxa condominial mensal, conforme discriminado a seguir:","",
+  "*Unidade:* "+R.unidade,"*Competência:* "+R.comp,"*Valor Pago:* "+R.valor,"*Pagador(a):* "+(R.pagador||"—"),"",R.sind,"Síndica do Condomínio Caiapó 83, 85 e 87"].join("\n")}
+const nomeArq=()=>"recibo-"+recAtual.unidade+"-"+recAtual.mes+".png";
+$("rTxt").onclick=()=>{guardaPagador();const t=reciboTexto();if(NATIVE)Android.shareText(t);else{navigator.clipboard&&navigator.clipboard.writeText(t);$("rShMsg").textContent="Texto copiado."}};
+$("rImg").onclick=async()=>{guardaPagador();const m=$("rShMsg");m.className="msg";
+  if(!window.html2canvas){m.className="msg err";m.textContent="Geração de imagem indisponível. Use Compartilhar texto.";return}
+  m.textContent="Gerando imagem…";$("rImg").disabled=true;
+  try{const cv=await html2canvas($("recibo"),{scale:2,backgroundColor:"#ffffff"});
+    const b64=cv.toDataURL("image/png").split(",")[1];if(NATIVE)Android.shareImage(b64,nomeArq());m.textContent=""}
+  catch(err){m.className="msg err";m.textContent="Não foi possível gerar a imagem. Use Compartilhar texto."}
+  $("rImg").disabled=false};
+
+/* dados dos recibos nas configurações */
+let sigNova=undefined;
+function fillRec(){const c=data.config;$("cSind").value=c.sindica||SIND_PADRAO;sigNova=undefined;mostraSig(c.assinatura||"");
+  const box=$("mor");box.innerHTML="";const mor=c.moradores||{};
+  for(const[id,name]of UNITS){const l=document.createElement("label");l.textContent=name;const i=document.createElement("input");i.id="mor-"+id;i.value=mor[id]||"";i.autocomplete="off";l.append(i);box.append(l)}}
+function mostraSig(src){const pv=$("sigPrev");pv.innerHTML="";if(src){const i=document.createElement("img");i.src=src;i.alt="Assinatura";pv.append(i)}else pv.textContent="Nenhuma assinatura. O recibo sai com uma linha para assinar."}
+$("saveRec").onclick=()=>{const m=$("rMsg");const mor={};for(const[id]of UNITS){const v=$("mor-"+id).value.trim();if(v)mor[id]=v}
+  const antes=data.config;data.config={...antes,sindica:$("cSind").value.trim()||SIND_PADRAO,moradores:mor,...(sigNova!==undefined?{assinatura:sigNova}:{})};
+  if(persist()){sigNova=undefined;m.className="msg ok";m.textContent="Dados dos recibos salvos."}else{data.config=antes;m.className="msg err";m.textContent="Não foi possível salvar."}};
+/* bloco de assinatura */
+const pad=$("pad");let pctx,desenhando=false,tracou=false,ult=null;
+function prepPad(){const r=pad.getBoundingClientRect(),dpr=window.devicePixelRatio||1;pad.width=r.width*dpr;pad.height=r.height*dpr;
+  pctx=pad.getContext("2d");pctx.scale(dpr,dpr);pctx.lineWidth=2.2;pctx.lineCap="round";pctx.lineJoin="round";pctx.strokeStyle="#4a6a9a";tracou=false}
+const pt=ev=>{const r=pad.getBoundingClientRect();return{x:ev.clientX-r.left,y:ev.clientY-r.top}};
+pad.addEventListener("pointerdown",ev=>{desenhando=true;ult=pt(ev);pad.setPointerCapture(ev.pointerId)});
+pad.addEventListener("pointermove",ev=>{if(!desenhando)return;const p=pt(ev);pctx.beginPath();pctx.moveTo(ult.x,ult.y);pctx.lineTo(p.x,p.y);pctx.stroke();ult=p;tracou=true});
+["pointerup","pointercancel"].forEach(t=>pad.addEventListener(t,()=>desenhando=false));
+$("sigNew").onclick=()=>{$("sigBox").hidden=false;requestAnimationFrame(prepPad)};
+$("sigClr").onclick=prepPad;
+function recorta(){const w=pad.width,h=pad.height,d=pctx.getImageData(0,0,w,h).data;let x0=w,y0=h,x1=0,y1=0;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>0){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  const m=8,cx=Math.max(0,x0-m),cy=Math.max(0,y0-m),cw=Math.min(w,x1+m)-cx,ch=Math.min(h,y1+m)-cy;
+  const c=document.createElement("canvas");c.width=cw;c.height=ch;c.getContext("2d").drawImage(pad,cx,cy,cw,ch,0,0,cw,ch);return c.toDataURL("image/png")}
+$("sigOk").onclick=()=>{if(!tracou){$("rMsg").className="msg err";$("rMsg").textContent="Assine no quadro antes de confirmar.";return}
+  sigNova=recorta();mostraSig(sigNova);$("sigBox").hidden=true;$("rMsg").className="msg";$("rMsg").textContent="Toque em Salvar dados dos recibos para guardar a assinatura."};
+$("sigDel").onclick=()=>{sigNova="";mostraSig("");$("sigBox").hidden=true;$("rMsg").className="msg";$("rMsg").textContent="Toque em Salvar dados dos recibos para confirmar."};
+
 /* ---------- navegação ---------- */
 function go(d){ui.mes=shift(ui.mes,d);$("fMes").dataset.follow="1";render();window.scrollTo(0,0)}
 $("prev").onclick=()=>go(-1);$("next").onclick=()=>go(1);
 function selTab(w){const l=w==="lancar";$("tab-lancar").setAttribute("aria-selected",l);$("tab-bal").setAttribute("aria-selected",!l);$("p-lancar").hidden=!l;$("p-bal").hidden=l;window.scrollTo(0,0)}
 $("tab-lancar").onclick=()=>selTab("lancar");$("tab-bal").onclick=()=>selTab("bal");
-window.voltar=()=>{if(!$("p-bal").hidden){selTab("lancar");return true}return false};
+window.voltar=()=>{if(!$("ov").hidden){fecharRecibo();return true}if(!$("p-bal").hidden){selTab("lancar");return true}return false};
 
-fillCfg();setTipo("despesa");render();
+fillCfg();fillRec();setTipo("despesa");render();
 if(!NATIVE||!Android.loadData())persist();
 </script>
 </body>
