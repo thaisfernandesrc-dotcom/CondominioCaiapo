@@ -198,7 +198,7 @@ button:disabled{opacity:.5}
     <div class="sheet" id="sheet"></div>
     <div class="btns" style="margin-top:12px">
       <button class="primary" id="shImg">Compartilhar imagem</button>
-      <button class="ghost" id="shTxt">Compartilhar texto</button>
+      <button class="ghost" id="shDl">Baixar imagem</button>
     </div>
     <p class="msg" id="shMsg" aria-live="polite"></p>
   </section>
@@ -211,7 +211,7 @@ button:disabled{opacity:.5}
     <div class="recibo" id="recibo"></div>
     <div class="card form" style="margin-top:12px">
       <label>Pagador(a)<input id="rPag" autocomplete="off" placeholder="Nome do responsável financeiro"></label>
-      <div class="btns"><button class="primary" id="rImg">Compartilhar imagem</button><button class="ghost" id="rTxt">Compartilhar texto</button></div>
+      <div class="btns"><button class="primary" id="rImg">Compartilhar imagem</button><button class="ghost" id="rDl">Baixar imagem</button></div>
       <p class="msg" id="rShMsg" aria-live="polite"></p>
     </div>
   </div>
@@ -340,16 +340,6 @@ function renderSheet(){
   n.textContent=(B.abertas?B.abertas+(B.abertas>1?" unidades em aberto. ":" unidade em aberto. "):"Todas as cotas pagas. ")+(B.sa==null?"Mês anterior ao início do controle: sem saldo anterior.":"Total de Receitas inclui o saldo anterior.");
   sh.append(n);
 }
-function balanceteTexto(m){
-  const[y,mm]=m.split("-"),B=balancete(m),L=[];
-  L.push("*Condomínio do Edifício Caiapó 83, 85 e 87*","Balancete Mensal | "+MESES[+mm-1]+" "+y,"","*1. Controle de Pagamento e Receitas Recebidas*");
-  for(const[id,name]of UNITS)L.push(name+": "+(B.pg[id]?brl(B.pg[id]):"em aberto"));
-  L.push("Saldo Anterior em Caixa: "+(B.sa==null?"—":brl(B.sa)));
-  for(const e of B.outras)L.push(e.descricao+": "+brl(e.valor));
-  L.push("","*2. Despesas Pagas*");for(const e of B.desp)L.push(e.descricao+": "+brl(e.valor));if(!B.desp.length)L.push("Nenhuma despesa lançada");
-  L.push("","*3. Apuração do Resultado Mensal*","Total de Receitas: "+brl(B.totRec),"Total de Despesas: "+brl(B.des),"*Saldo Final em Caixa: "+brl(B.fin)+"*","Resultado do mês: "+brl(B.rec-B.des));
-  return L.join("\n");
-}
 
 let stT;function showStatus(t){$("status").textContent=t;$("status").hidden=false;clearTimeout(stT);stT=setTimeout(()=>$("status").hidden=true,6000)}
 
@@ -412,17 +402,21 @@ $("bkApply").onclick=()=>{if(!restaurar)return;const antes=data;data=restaurar;
   if(persist()){restaurar=null;$("bkConfirm").hidden=true;$("bkMsg").className="msg ok";$("bkMsg").textContent="Backup restaurado.";fillCfg();fillRec();render()}else data=antes};
 
 /* ---------- compartilhar ---------- */
-$("shTxt").onclick=()=>{const t=balanceteTexto(ui.mes);if(NATIVE)Android.shareText(t);else{navigator.clipboard&&navigator.clipboard.writeText(t);$("shMsg").textContent="Texto copiado."}};
-$("shImg").onclick=async()=>{
-  const m=$("shMsg");m.className="msg";
-  if(!window.html2canvas){m.className="msg err";m.textContent="Geração de imagem indisponível. Use Compartilhar texto.";return}
-  m.textContent="Gerando imagem…";$("shImg").disabled=true;
-  try{const bg=getComputedStyle($("sheet")).backgroundColor;
-    const cv=await html2canvas($("sheet"),{scale:2,backgroundColor:bg});
+/* imagem: compartilhar ou baixar */
+async function gerarImagem(el,botoes,msg,acao,nome,cor){
+  const m=$(msg);m.className="msg";
+  if(!window.html2canvas){m.className="msg err";m.textContent="Não foi possível gerar a imagem neste aparelho.";return}
+  botoes.forEach(b=>$(b).disabled=true);m.textContent="Gerando imagem…";
+  try{const cv=await html2canvas($(el),{scale:2,backgroundColor:cor||getComputedStyle($(el)).backgroundColor});
     const b64=cv.toDataURL("image/png").split(",")[1];
-    if(NATIVE)Android.shareImage(b64,"balancete-"+ui.mes+".png");m.textContent=""}
-  catch(e){m.className="msg err";m.textContent="Não foi possível gerar a imagem. Use Compartilhar texto."}
-  $("shImg").disabled=false};
+    if(!NATIVE){m.textContent="Disponível no app instalado.";}
+    else if(acao==="baixar"){m.textContent=Android.saveImage(b64,nome)?"Imagem salva na galeria, na pasta Condomínio Caiapó.":"";if(m.textContent)m.className="msg ok"}
+    else{Android.shareImage(b64,nome);m.textContent=""}}
+  catch(e){m.className="msg err";m.textContent="Não foi possível gerar a imagem. Tente de novo."}
+  botoes.forEach(b=>$(b).disabled=false)}
+const nomeBal=()=>"balancete-caiapo-"+ui.mes+".png";
+$("shImg").onclick=()=>gerarImagem("sheet",["shImg","shDl"],"shMsg","compartilhar",nomeBal());
+$("shDl").onclick=()=>gerarImagem("sheet",["shImg","shDl"],"shMsg","baixar",nomeBal());
 
 
 /* ---------- recibos ---------- */
@@ -475,18 +469,9 @@ function fecharRecibo(){guardaPagador();$("ov").hidden=true;recAtual=null}
 $("ovClose").onclick=fecharRecibo;
 $("rPag").addEventListener("input",renderRecibo);
 $("rPag").addEventListener("change",guardaPagador);
-function reciboTexto(){const R=dadosRecibo(recAtual);return["*Condomínio do Edifício Caiapó 83, 85 e 87*","Recibo de Pagamento | Cota Condominial","",
-  "Declaro para os devidos fins que recebi do(a) responsável financeiro(a) pela unidade abaixo identificada o pagamento da taxa condominial mensal, conforme discriminado a seguir:","",
-  "*Unidade:* "+R.unidade,"*Competência:* "+R.comp,"*Valor Pago:* "+R.valor,"*Pagador(a):* "+(R.pagador||"—"),"","Documento assinado eletronicamente em "+R.quando,R.sind,"Síndica do Condomínio Caiapó 83, 85 e 87"].join("\n")}
 const nomeArq=()=>"recibo-"+recAtual.unidade+"-"+recAtual.mes+".png";
-$("rTxt").onclick=()=>{guardaPagador();marcaEmissao();const t=reciboTexto();if(NATIVE)Android.shareText(t);else{navigator.clipboard&&navigator.clipboard.writeText(t);$("rShMsg").textContent="Texto copiado."}};
-$("rImg").onclick=async()=>{guardaPagador();marcaEmissao();const m=$("rShMsg");m.className="msg";
-  if(!window.html2canvas){m.className="msg err";m.textContent="Geração de imagem indisponível. Use Compartilhar texto.";return}
-  m.textContent="Gerando imagem…";$("rImg").disabled=true;
-  try{const cv=await html2canvas($("recibo"),{scale:2,backgroundColor:"#ffffff"});
-    const b64=cv.toDataURL("image/png").split(",")[1];if(NATIVE)Android.shareImage(b64,nomeArq());m.textContent=""}
-  catch(err){m.className="msg err";m.textContent="Não foi possível gerar a imagem. Use Compartilhar texto."}
-  $("rImg").disabled=false};
+$("rImg").onclick=()=>{guardaPagador();marcaEmissao();gerarImagem("recibo",["rImg","rDl"],"rShMsg","compartilhar",nomeArq(),"#ffffff")};
+$("rDl").onclick=()=>{guardaPagador();marcaEmissao();gerarImagem("recibo",["rImg","rDl"],"rShMsg","baixar",nomeArq(),"#ffffff")};
 
 /* dados dos recibos nas configurações */
 function fillRec(){const c=data.config;$("cSind").value=c.sindica||SIND_PADRAO;

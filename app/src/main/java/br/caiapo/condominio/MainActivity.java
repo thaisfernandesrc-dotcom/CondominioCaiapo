@@ -1,8 +1,12 @@
 package br.caiapo.condominio;
 
 import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.os.Bundle;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
@@ -27,9 +31,11 @@ import java.nio.charset.StandardCharsets;
 public class MainActivity extends Activity {
     private static final int REQ_SAVE_BACKUP = 1;
     private static final int REQ_OPEN_BACKUP = 2;
+    private static final int REQ_SAVE_IMAGE = 3;
 
     private WebView web;
     private String pendingBackup;
+    private byte[] pendingImage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,6 +119,12 @@ public class MainActivity extends Activity {
                 }
                 pendingBackup = null;
                 toast("Backup salvo.");
+            } else if (req == REQ_SAVE_IMAGE && pendingImage != null) {
+                try (OutputStream o = getContentResolver().openOutputStream(uri, "wt")) {
+                    o.write(pendingImage);
+                }
+                pendingImage = null;
+                toast("Imagem salva.");
             } else if (req == REQ_OPEN_BACKUP) {
                 callJs("window.backupCarregado", readAll(getContentResolver().openInputStream(uri)));
             }
@@ -183,6 +195,40 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 toast("Não foi possível gerar a imagem.");
             }
+        }
+
+        /** Salva a imagem na galeria (Android 10+) e devolve true; em versões antigas abre o seletor de pasta e devolve false. */
+        @JavascriptInterface
+        public boolean saveImage(String base64Png, String filename) {
+            byte[] bytes = Base64.decode(base64Png, Base64.DEFAULT);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.Images.Media.DISPLAY_NAME, filename);
+                    v.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                    v.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Condomínio Caiapó");
+                    v.put(MediaStore.Images.Media.IS_PENDING, 1);
+                    Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
+                    if (uri == null) throw new Exception("insert");
+                    try (OutputStream o = getContentResolver().openOutputStream(uri)) {
+                        o.write(bytes);
+                    }
+                    v.clear();
+                    v.put(MediaStore.Images.Media.IS_PENDING, 0);
+                    getContentResolver().update(uri, v, null, null);
+                    return true;
+                } catch (Exception e) {
+                    toast("Não foi possível salvar a imagem.");
+                    return false;
+                }
+            }
+            pendingImage = bytes;
+            Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("image/png");
+            i.putExtra(Intent.EXTRA_TITLE, filename);
+            runOnUiThread(() -> startActivityForResult(i, REQ_SAVE_IMAGE));
+            return false;
         }
 
         @JavascriptInterface
