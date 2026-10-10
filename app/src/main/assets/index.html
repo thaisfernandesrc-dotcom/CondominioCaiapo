@@ -81,14 +81,11 @@ button:disabled{opacity:.5}
 .recibo dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0;font-size:15px}
 .recibo dt{font-weight:600;color:#555e69}
 .recibo dd{margin:0;font-weight:600;color:#5d7391;min-width:0;overflow-wrap:anywhere}
-.recibo .ass{margin-top:30px;text-align:center}
-.recibo .ass img{height:64px;max-width:70%;display:block;margin:0 auto 2px;object-fit:contain}
-.recibo .ass .linha{height:64px;border-bottom:1px solid #aab3be;width:60%;margin:0 auto 6px}
+.recibo .ass{margin-top:36px;text-align:center}
+.recibo .ass .eletr{font-size:12.5px;color:#7d8794;font-style:italic;margin:0 0 6px}
+.recibo .ass .linha{border-bottom:1px solid #aab3be;width:70%;margin:0 auto 6px}
 .recibo .ass b{display:block;color:#5d7391;font-size:14px}
 .recibo .ass small{display:block;color:#7d8794;font-size:14px}
-.pad{width:100%;height:150px;background:#fff;border:1px dashed var(--muted);border-radius:8px;touch-action:none;display:block}
-.sigprev{background:#fff;border:1px solid var(--line);border-radius:8px;min-height:70px;display:grid;place-items:center;color:#7d8794;font-size:13px}
-.sigprev img{max-height:70px;max-width:90%}
 .mor{display:grid;gap:8px}
 .sheet .tt{font:600 15px/1.3 var(--f-head);color:var(--slate)}
 .sheet h3{text-align:center;font:600 18px var(--f-head);color:var(--slate);margin:16px 0 6px}
@@ -173,15 +170,6 @@ button:disabled{opacity:.5}
     <h2>Recibos</h2>
     <div class="card form">
       <label>Nome da síndica<input id="cSind" autocomplete="off"></label>
-      <div style="display:grid;gap:6px">
-        <span class="hint" style="margin:0">ASSINATURA</span>
-        <div class="sigprev" id="sigPrev">Nenhuma assinatura. O recibo sai com uma linha para assinar.</div>
-        <div class="btns"><button class="ghost" id="sigNew">Assinar com o dedo</button><button class="ghost" id="sigDel">Remover</button></div>
-        <div id="sigBox" hidden style="display:grid;gap:8px">
-          <canvas class="pad" id="pad"></canvas>
-          <div class="btns"><button class="primary" id="sigOk">Usar esta assinatura</button><button class="ghost" id="sigClr">Limpar</button></div>
-        </div>
-      </div>
       <details><summary class="hint" style="margin:0;color:var(--slate);font-weight:600">Pagadores por unidade</summary>
         <div class="mor" id="mor" style="margin-top:10px"></div>
       </details>
@@ -459,7 +447,12 @@ const brlRec=c=>"R$"+fmtIn(c);
 let recAtual=null;
 function pagadorDe(e){return (e.pagador)||((data.config.moradores||{})[e.unidade])||""}
 function dadosRecibo(e){const[y,mm]=e.mes.split("-");return{unidade:UNAME[e.unidade]||e.descricao,comp:MESES[+mm-1]+" de "+y,
-  valor:brlRec(e.valor)+" ("+extenso(e.valor)+")",pagador:$("rPag").value.trim(),sind:data.config.sindica||SIND_PADRAO,ass:data.config.assinatura||""}}
+  valor:brlRec(e.valor)+" ("+extenso(e.valor)+")",pagador:$("rPag").value.trim(),sind:data.config.sindica||SIND_PADRAO,quando:dataHora(e.emitidoEm||Date.now())}}
+function dataHora(ms){const d=new Date(ms),z=n=>String(n).padStart(2,"0");
+  return z(d.getDate())+"/"+z(d.getMonth()+1)+"/"+d.getFullYear()+" às "+z(d.getHours())+":"+z(d.getMinutes())+":"+z(d.getSeconds())}
+function marcaEmissao(){const e=recAtual;if(!e||e.emitidoEm)return;const i=data.lancamentos.findIndex(y=>y.id===e.id);if(i<0)return;
+  const antes=data.lancamentos[i];data.lancamentos[i]={...antes,emitidoEm:Date.now()};
+  if(persist()){recAtual=data.lancamentos[i];renderRecibo()}else data.lancamentos[i]=antes}
 function renderRecibo(){
   const e=recAtual;if(!e)return;const R=dadosRecibo(e),box=$("recibo");box.innerHTML="";
   const top=document.createElement("div");top.className="top";top.innerHTML='<div class="logo">'+LOGO+'</div>';
@@ -469,7 +462,8 @@ function renderRecibo(){
   for(const[k,v]of[["Unidade:",R.unidade],["Competência:",R.comp],["Valor Pago:",R.valor],["Pagador(a):",R.pagador||"—"]]){const dt=document.createElement("dt");dt.textContent=k;const dd=document.createElement("dd");dd.textContent=v;dl.append(dt,dd)}
   box.append(dl);
   const a=document.createElement("div");a.className="ass";
-  if(R.ass){const i=document.createElement("img");i.src=R.ass;i.alt="Assinatura";a.append(i)}else{const l=document.createElement("div");l.className="linha";a.append(l)}
+  const t=document.createElement("p");t.className="eletr";t.textContent="Documento assinado eletronicamente em "+R.quando;
+  const l=document.createElement("div");l.className="linha";a.append(t,l);
   const b=document.createElement("b");b.textContent=R.sind;const sm=document.createElement("small");sm.textContent="Síndica do Condomínio Caiapó 83, 85 e 87";a.append(b,sm);box.append(a);
 }
 function abrirRecibo(e){if(!e)return;recAtual=e;$("rPag").value=pagadorDe(e);$("rShMsg").textContent="";renderRecibo();$("ov").hidden=false;$("ov").scrollTop=0}
@@ -483,10 +477,10 @@ $("rPag").addEventListener("input",renderRecibo);
 $("rPag").addEventListener("change",guardaPagador);
 function reciboTexto(){const R=dadosRecibo(recAtual);return["*Condomínio do Edifício Caiapó 83, 85 e 87*","Recibo de Pagamento | Cota Condominial","",
   "Declaro para os devidos fins que recebi do(a) responsável financeiro(a) pela unidade abaixo identificada o pagamento da taxa condominial mensal, conforme discriminado a seguir:","",
-  "*Unidade:* "+R.unidade,"*Competência:* "+R.comp,"*Valor Pago:* "+R.valor,"*Pagador(a):* "+(R.pagador||"—"),"",R.sind,"Síndica do Condomínio Caiapó 83, 85 e 87"].join("\n")}
+  "*Unidade:* "+R.unidade,"*Competência:* "+R.comp,"*Valor Pago:* "+R.valor,"*Pagador(a):* "+(R.pagador||"—"),"","Documento assinado eletronicamente em "+R.quando,R.sind,"Síndica do Condomínio Caiapó 83, 85 e 87"].join("\n")}
 const nomeArq=()=>"recibo-"+recAtual.unidade+"-"+recAtual.mes+".png";
-$("rTxt").onclick=()=>{guardaPagador();const t=reciboTexto();if(NATIVE)Android.shareText(t);else{navigator.clipboard&&navigator.clipboard.writeText(t);$("rShMsg").textContent="Texto copiado."}};
-$("rImg").onclick=async()=>{guardaPagador();const m=$("rShMsg");m.className="msg";
+$("rTxt").onclick=()=>{guardaPagador();marcaEmissao();const t=reciboTexto();if(NATIVE)Android.shareText(t);else{navigator.clipboard&&navigator.clipboard.writeText(t);$("rShMsg").textContent="Texto copiado."}};
+$("rImg").onclick=async()=>{guardaPagador();marcaEmissao();const m=$("rShMsg");m.className="msg";
   if(!window.html2canvas){m.className="msg err";m.textContent="Geração de imagem indisponível. Use Compartilhar texto.";return}
   m.textContent="Gerando imagem…";$("rImg").disabled=true;
   try{const cv=await html2canvas($("recibo"),{scale:2,backgroundColor:"#ffffff"});
@@ -495,31 +489,12 @@ $("rImg").onclick=async()=>{guardaPagador();const m=$("rShMsg");m.className="msg
   $("rImg").disabled=false};
 
 /* dados dos recibos nas configurações */
-let sigNova=undefined;
-function fillRec(){const c=data.config;$("cSind").value=c.sindica||SIND_PADRAO;sigNova=undefined;mostraSig(c.assinatura||"");
+function fillRec(){const c=data.config;$("cSind").value=c.sindica||SIND_PADRAO;
   const box=$("mor");box.innerHTML="";const mor=c.moradores||{};
   for(const[id,name]of UNITS){const l=document.createElement("label");l.textContent=name;const i=document.createElement("input");i.id="mor-"+id;i.value=mor[id]||"";i.autocomplete="off";l.append(i);box.append(l)}}
-function mostraSig(src){const pv=$("sigPrev");pv.innerHTML="";if(src){const i=document.createElement("img");i.src=src;i.alt="Assinatura";pv.append(i)}else pv.textContent="Nenhuma assinatura. O recibo sai com uma linha para assinar."}
 $("saveRec").onclick=()=>{const m=$("rMsg");const mor={};for(const[id]of UNITS){const v=$("mor-"+id).value.trim();if(v)mor[id]=v}
-  const antes=data.config;data.config={...antes,sindica:$("cSind").value.trim()||SIND_PADRAO,moradores:mor,...(sigNova!==undefined?{assinatura:sigNova}:{})};
-  if(persist()){sigNova=undefined;m.className="msg ok";m.textContent="Dados dos recibos salvos."}else{data.config=antes;m.className="msg err";m.textContent="Não foi possível salvar."}};
-/* bloco de assinatura */
-const pad=$("pad");let pctx,desenhando=false,tracou=false,ult=null;
-function prepPad(){const r=pad.getBoundingClientRect(),dpr=window.devicePixelRatio||1;pad.width=r.width*dpr;pad.height=r.height*dpr;
-  pctx=pad.getContext("2d");pctx.scale(dpr,dpr);pctx.lineWidth=2.2;pctx.lineCap="round";pctx.lineJoin="round";pctx.strokeStyle="#4a6a9a";tracou=false}
-const pt=ev=>{const r=pad.getBoundingClientRect();return{x:ev.clientX-r.left,y:ev.clientY-r.top}};
-pad.addEventListener("pointerdown",ev=>{desenhando=true;ult=pt(ev);pad.setPointerCapture(ev.pointerId)});
-pad.addEventListener("pointermove",ev=>{if(!desenhando)return;const p=pt(ev);pctx.beginPath();pctx.moveTo(ult.x,ult.y);pctx.lineTo(p.x,p.y);pctx.stroke();ult=p;tracou=true});
-["pointerup","pointercancel"].forEach(t=>pad.addEventListener(t,()=>desenhando=false));
-$("sigNew").onclick=()=>{$("sigBox").hidden=false;requestAnimationFrame(prepPad)};
-$("sigClr").onclick=prepPad;
-function recorta(){const w=pad.width,h=pad.height,d=pctx.getImageData(0,0,w,h).data;let x0=w,y0=h,x1=0,y1=0;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>0){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
-  const m=8,cx=Math.max(0,x0-m),cy=Math.max(0,y0-m),cw=Math.min(w,x1+m)-cx,ch=Math.min(h,y1+m)-cy;
-  const c=document.createElement("canvas");c.width=cw;c.height=ch;c.getContext("2d").drawImage(pad,cx,cy,cw,ch,0,0,cw,ch);return c.toDataURL("image/png")}
-$("sigOk").onclick=()=>{if(!tracou){$("rMsg").className="msg err";$("rMsg").textContent="Assine no quadro antes de confirmar.";return}
-  sigNova=recorta();mostraSig(sigNova);$("sigBox").hidden=true;$("rMsg").className="msg";$("rMsg").textContent="Toque em Salvar dados dos recibos para guardar a assinatura."};
-$("sigDel").onclick=()=>{sigNova="";mostraSig("");$("sigBox").hidden=true;$("rMsg").className="msg";$("rMsg").textContent="Toque em Salvar dados dos recibos para confirmar."};
+  const antes=data.config;data.config={...antes,sindica:$("cSind").value.trim()||SIND_PADRAO,moradores:mor};
+  if(persist()){m.className="msg ok";m.textContent="Dados dos recibos salvos."}else{data.config=antes;m.className="msg err";m.textContent="Não foi possível salvar."}};
 
 /* ---------- navegação ---------- */
 function go(d){ui.mes=shift(ui.mes,d);$("fMes").dataset.follow="1";render();window.scrollTo(0,0)}
