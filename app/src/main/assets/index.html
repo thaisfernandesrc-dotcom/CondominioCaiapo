@@ -18,6 +18,7 @@
   --bg:#161b22; --surface:#1f2630; --fg:#e4e9f0; --muted:#97a3b4; --line:#323c4a;
   --slate:#9bb2d1; --slate-soft:#2a3545; --in:#6cc77a; --in-soft:#1f3324; --out:#f0837b; --out-soft:#3a2321; color-scheme:dark}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body)}
 .wrap{max-width:560px;margin:0 auto;padding:0 16px 40px}
@@ -87,6 +88,13 @@ button:disabled{opacity:.5}
 .recibo .ass b{display:block;color:#5d7391;font-size:14px}
 .recibo .ass small{display:block;color:#7d8794;font-size:14px}
 .mor{display:grid;gap:8px}
+.miniatura{display:block;max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--line);object-fit:contain;background:#fff}
+.foto{display:block;width:100%;max-height:65vh;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff;margin:8px 0}
+.rec-btn.tem{background:var(--slate-soft)}
+.passos{margin:0;padding-left:20px;display:grid;gap:6px;font-size:13px;color:var(--muted)}
+.passos b{color:var(--fg)}
+.claro{--surface:#ffffff;--fg:#26303d;--muted:#6a7789;--line:#d8dee7;--slate:#5d7391;--in:#2f8a3e;--out:#b8322c;color:#26303d;background:#ffffff}
+#fora{position:absolute;left:-10000px;top:0;width:430px}
 .sheet .tt{font:600 15px/1.3 var(--f-head);color:var(--slate)}
 .sheet h3{text-align:center;font:600 18px var(--f-head);color:var(--slate);margin:16px 0 6px}
 .sheet h4{font:600 15px var(--f-head);color:var(--slate);margin:16px 0 4px}
@@ -139,6 +147,12 @@ button:disabled{opacity:.5}
         <label>Valor (R$)<input id="fVal" inputmode="decimal" placeholder="0,00" autocomplete="off"></label>
         <label>Mês<input id="fMes" type="month"></label>
       </div>
+      <div id="fComp" class="form" hidden>
+        <span class="hint" style="margin:0">COMPROVANTE (OPCIONAL)</span>
+        <img id="fCompImg" class="miniatura" alt="Foto do comprovante" hidden>
+        <div class="btns"><button class="ghost" id="fFoto" type="button">Tirar foto</button><button class="ghost" id="fGal" type="button">Galeria</button></div>
+        <button class="ghost" id="fCompDel" type="button" hidden>Remover foto</button>
+      </div>
       <button class="primary" id="add">Adicionar</button>
       <p class="msg" id="fMsg" aria-live="polite"></p>
     </div>
@@ -147,6 +161,31 @@ button:disabled{opacity:.5}
   <section>
     <h2 id="listTitle">Lançamentos do mês</h2>
     <div class="card"><ul class="list" id="list"></ul></div>
+  </section>
+
+  <section>
+    <h2>Nuvem (Google Drive)</h2>
+    <div class="card form">
+      <p class="msg" id="nvStatus"></p>
+      <div id="nvLigada" class="form" hidden>
+        <div class="btns"><button class="primary" id="nvLink">Copiar link para moradores</button><button class="ghost" id="nvAbrir">Abrir pasta</button></div>
+        <button class="ghost" id="nvTudo">Reenviar tudo</button>
+      </div>
+      <details id="nvCfg"><summary class="hint" style="margin:0;color:var(--slate);font-weight:600">Configurar a nuvem</summary>
+        <div class="form" style="margin-top:10px">
+          <ol class="passos">
+            <li>Num computador, entre na <b>conta Google do condomínio</b> e abra <b>script.google.com</b>. Clique em <b>Novo projeto</b>.</li>
+            <li>Toque em <b>Copiar script</b> aqui, mande para o computador e cole no lugar de todo o texto que aparece lá. Clique em salvar.</li>
+            <li>Clique em <b>Implantar → Nova implantação</b>. Em tipo, escolha <b>App da Web</b>. Executar como: <b>Eu</b>. Quem pode acessar: <b>Qualquer pessoa</b>. Clique em Implantar e autorize com a conta do condomínio.</li>
+            <li>Copie a <b>URL do app da Web</b> (termina em /exec), cole abaixo e toque em Conectar.</li>
+          </ol>
+          <button class="ghost" id="nvScript" type="button">Copiar script</button>
+          <label>URL do app da Web<input id="nvUrl" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec"></label>
+          <button class="primary" id="nvConectar" type="button">Conectar</button>
+          <p class="msg" id="nvMsg" aria-live="polite"></p>
+        </div>
+      </details>
+    </div>
   </section>
 
   <section>
@@ -217,6 +256,21 @@ button:disabled{opacity:.5}
   </div>
 </div>
 
+<div class="overlay" id="ovC" hidden>
+  <div class="wrap">
+    <div class="ovh"><b>Comprovante</b><button class="iconbtn" id="ovCClose" aria-label="Fechar">✕</button></div>
+    <p class="hint" id="cInfo"></p>
+    <div class="card hint" id="cVazio">Nenhuma foto anexada a esta despesa.</div>
+    <img id="cImg" class="foto" alt="Foto do comprovante" hidden>
+    <p class="msg" id="cEstado"></p>
+    <div class="form">
+      <div class="btns"><button class="primary" id="cFoto">Tirar foto</button><button class="ghost" id="cGal">Galeria</button></div>
+      <div class="btns"><button class="ghost" id="cDrive">Abrir no Drive</button><button class="ghost" id="cDel">Remover foto</button></div>
+    </div>
+  </div>
+</div>
+<div class="sheet claro" id="fora" aria-hidden="true"></div>
+
 <script src="seed.js"></script>
 <script src="html2canvas.min.js"></script>
 <script>
@@ -258,7 +312,7 @@ function persist(){
   return ok;
 }
 data=load();
-let ui={mes:null,tipo:"despesa"};
+let ui={mes:null,tipo:"despesa",compB64:""};
 const mesesComDados=()=>[...new Set(data.lancamentos.map(e=>e.mes))].sort();
 ui.mes=mesesComDados().includes(nowM)||!data.lancamentos.length?nowM:mesesComDados().pop();
 
@@ -299,9 +353,10 @@ function render(){
     const v=document.createElement("span");v.className="v "+(e.tipo==="despesa"?"out":"in");v.textContent=brl(e.valor);
     const x=document.createElement("button");x.type="button";x.className="del";x.textContent="Excluir";
     let t;x.onclick=()=>{if(!x.classList.contains("arm")){x.classList.add("arm");x.textContent="Confirmar";t=setTimeout(()=>{x.classList.remove("arm");x.textContent="Excluir"},4000);return}
-      clearTimeout(t);const antes=data.lancamentos;data.lancamentos=antes.filter(y=>y.id!==e.id);if(!persist())data.lancamentos=antes;render()};
+      clearTimeout(t);excluirLanc(e)};
     const acts=document.createElement("span");acts.className="acts";
     if(e.tipo==="cota"){const r=document.createElement("button");r.type="button";r.className="rec-btn";r.textContent="Recibo";r.onclick=()=>abrirRecibo(e);acts.append(r)}
+    if(e.tipo==="despesa"){const r=document.createElement("button");r.type="button";r.className="rec-btn"+(e.comprovante?" tem":"");r.textContent=e.comprovante?"Ver foto":"+ Foto";r.onclick=()=>abrirComp(e);acts.append(r)}
     acts.append(x);li.append(d,v,acts);ul.append(li)}
   const sug=[...new Set(data.lancamentos.filter(e=>e.tipo!=="cota").map(e=>e.descricao))].sort();
   $("sugestoes").innerHTML="";for(const s of sug){const o=document.createElement("option");o.value=s;$("sugestoes").append(o)}
@@ -316,8 +371,9 @@ function balancete(m){
   const desp=me.filter(e=>e.tipo==="despesa").sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
   const totRec=rec+(sa||0);return{me,rec,des,sa,pg,outras,desp,totRec,fin:totRec-des,abertas:UNITS.filter(u=>!pg[u[0]]).length}
 }
-function renderSheet(){
-  const m=ui.mes,[y,mm]=m.split("-"),B=balancete(m),sh=$("sheet");sh.innerHTML="";
+function renderSheet(){montarFolha($("sheet"),ui.mes)}
+function montarFolha(sh,m){
+  const[y,mm]=m.split("-"),B=balancete(m);sh.innerHTML="";
   const top=document.createElement("div");top.className="top";
   top.innerHTML='<div class="logo">'+LOGO+'</div>';
   const tt=document.createElement("div");tt.className="tt";tt.innerHTML="Condomínio do Edifício Caiapó 83, 85 e 87<br>Balancete Mensal | Exercício "+y;top.append(tt);sh.append(top);
@@ -347,12 +403,12 @@ function adicionar(e){
   const novo={id:uid(),criadoEm:Date.now(),...e};
   data.lancamentos.push(novo);
   if(!persist()){data.lancamentos.pop();return false}
-  render();return true;
+  nuvemMarcar(novo.mes);render();return novo;
 }
 
 /* ---------- formulário ---------- */
 function setTipo(t){ui.tipo=t;document.querySelectorAll(".seg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.t===t));
-  $("lDesc").hidden=t==="cota";$("lUnit").hidden=t!=="cota";
+  $("lDesc").hidden=t==="cota";$("lUnit").hidden=t!=="cota";$("fComp").hidden=t!=="despesa";
   if(t==="cota"&&!$("fVal").value)$("fVal").value=fmtIn(data.config.cota||22000)}
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTipo(b.dataset.t));
 $("fUnit").innerHTML=UNITS.map(([id,n])=>'<option value="'+id+'">'+n+'</option>').join("");
@@ -364,8 +420,10 @@ $("add").onclick=()=>{
   if(t!=="cota"&&!desc){msg.className="msg err";msg.textContent="Informe a descrição.";$("fDesc").focus();return}
   if(!(valor>0)){msg.className="msg err";msg.textContent="Informe um valor maior que zero, por exemplo 130,64.";$("fVal").focus();return}
   if(!/^\d{4}-\d{2}$/.test(mes)){msg.className="msg err";msg.textContent="Escolha o mês do lançamento.";return}
-  if(adicionar({tipo:t,descricao:desc,valor,mes,...(t==="cota"?{unidade:$("fUnit").value}:{})})){
-    msg.className="msg ok";msg.textContent="Lançado em "+mLabel(mes)+": "+desc+", "+brl(valor)+".";
+  const novo=adicionar({tipo:t,descricao:desc,valor,mes,...(t==="cota"?{unidade:$("fUnit").value}:{})});
+  if(novo){
+    let extra="";if(t==="despesa"&&ui.compB64){extra=anexarComp(novo,ui.compB64)?" Foto do comprovante anexada.":" A foto não pôde ser guardada.";limparFotoForm();render()}
+    msg.className="msg ok";msg.textContent="Lançado em "+mLabel(mes)+": "+desc+", "+brl(valor)+"."+extra;
     $("fDesc").value="";$("fVal").value=t==="cota"?fmtIn(data.config.cota||22000):""}
 };
 
@@ -375,7 +433,7 @@ $("saveCfg").onclick=()=>{
   const m=$("cMsg"),s=parseMoney($("cSaldo").value),c=parseMoney($("cCota").value),mi=$("cMes").value;
   if(!isFinite(s)||!(c>0)||!/^\d{4}-\d{2}$/.test(mi)){m.className="msg err";m.textContent="Preencha saldo inicial, primeiro mês e valor da cota.";return}
   const antes=data.config;data.config={...antes,saldoInicial:s,mesInicial:mi,cota:c};
-  if(persist()){m.className="msg ok";m.textContent="Configurações salvas.";render()}else data.config=antes;
+  if(persist()){m.className="msg ok";m.textContent="Configurações salvas.";nuvemMarcar(primeiroMes());render()}else data.config=antes;
 };
 
 /* ---------- backup ---------- */
@@ -399,7 +457,7 @@ window.backupCarregado=txt=>{
 };
 $("bkCancel").onclick=()=>{restaurar=null;$("bkConfirm").hidden=true};
 $("bkApply").onclick=()=>{if(!restaurar)return;const antes=data;data=restaurar;
-  if(persist()){restaurar=null;$("bkConfirm").hidden=true;$("bkMsg").className="msg ok";$("bkMsg").textContent="Backup restaurado.";fillCfg();fillRec();render()}else data=antes};
+  if(persist()){restaurar=null;$("bkConfirm").hidden=true;$("bkMsg").className="msg ok";$("bkMsg").textContent="Backup restaurado.";garantirNuvem();data.config={...data.config,nuvem:antes.config.nuvem};persist();nuvemMarcar(primeiroMes());fillCfg();fillRec();render()}else data=antes};
 
 /* ---------- compartilhar ---------- */
 /* imagem: compartilhar ou baixar */
@@ -481,14 +539,158 @@ $("saveRec").onclick=()=>{const m=$("rMsg");const mor={};for(const[id]of UNITS){
   const antes=data.config;data.config={...antes,sindica:$("cSind").value.trim()||SIND_PADRAO,moradores:mor};
   if(persist()){m.className="msg ok";m.textContent="Dados dos recibos salvos."}else{data.config=antes;m.className="msg err";m.textContent="Não foi possível salvar."}};
 
+
+/* ---------- comprovantes ---------- */
+const fotoCbs={};let fotoSeq=0;
+function pedirFoto(origem){return new Promise(res=>{if(!NATIVE){showStatus("Disponível no app instalado.");res("");return}
+  const k="f"+(++fotoSeq);fotoCbs[k]=res;Android.escolherFoto(origem,k)})}
+window.fotoEscolhida=(k,b64)=>{const f=fotoCbs[k];delete fotoCbs[k];if(f)f(b64||"")};
+const lancPorId=id=>data.lancamentos.find(y=>y.id===id);
+function anexarComp(e,b64){
+  if(!NATIVE)return false;
+  const i=data.lancamentos.findIndex(y=>y.id===e.id);if(i<0)return false;
+  const atual=data.lancamentos[i],antigo=atual.comprovante,nome="comp-"+e.id+"-"+Date.now().toString(36)+".jpg";
+  if(!Android.salvarArquivo(nome,b64)){showStatus("Não foi possível guardar a foto no celular.");return false}
+  data.lancamentos[i]={...atual,comprovante:{arq:nome,enviado:false,anterior:antigo?(antigo.id||antigo.anterior||null):null}};
+  if(!persist()){data.lancamentos[i]=atual;Android.apagarArquivo(nome);return false}
+  if(antigo&&antigo.arq)Android.apagarArquivo(antigo.arq);
+  nuvemAgendar();return true}
+function removerComp(e){
+  const i=data.lancamentos.findIndex(y=>y.id===e.id);if(i<0)return;
+  const atual=data.lancamentos[i],c=atual.comprovante;if(!c)return;
+  const sem={...atual};delete sem.comprovante;data.lancamentos[i]=sem;
+  const idDrive=c.id||c.anterior;if(idDrive)data.nuvem.excluir.push(idDrive);
+  if(!persist()){data.lancamentos[i]=atual;if(idDrive)data.nuvem.excluir.pop();return}
+  if(NATIVE&&c.arq)Android.apagarArquivo(c.arq);nuvemAgendar()}
+function excluirLanc(e){
+  const antes=data.lancamentos,excl=data.nuvem.excluir.slice();
+  data.lancamentos=antes.filter(y=>y.id!==e.id);
+  const c=e.comprovante,idDrive=c&&(c.id||c.anterior);if(idDrive)data.nuvem.excluir.push(idDrive);
+  if(!persist()){data.lancamentos=antes;data.nuvem.excluir=excl;return}
+  if(NATIVE&&c&&c.arq)Android.apagarArquivo(c.arq);
+  nuvemMarcar(e.mes);render()}
+
+/* foto no formulário */
+function limparFotoForm(){ui.compB64="";$("fCompImg").hidden=true;$("fCompImg").removeAttribute("src");$("fCompDel").hidden=true}
+async function fotoForm(origem){const b64=await pedirFoto(origem);if(!b64)return;ui.compB64=b64;$("fCompImg").src="data:image/jpeg;base64,"+b64;$("fCompImg").hidden=false;$("fCompDel").hidden=false}
+$("fFoto").onclick=()=>fotoForm("camera");$("fGal").onclick=()=>fotoForm("galeria");$("fCompDel").onclick=limparFotoForm;
+
+/* tela do comprovante */
+let compAtual=null;
+function mostrarComp(){
+  const e=compAtual&&lancPorId(compAtual);if(!e){fecharComp();return}
+  $("cInfo").textContent=e.descricao+" · "+brl(e.valor)+" · "+mLabel(e.mes);
+  const c=e.comprovante,b64=c&&NATIVE?Android.lerArquivo(c.arq):"";
+  $("cImg").hidden=!b64;if(b64)$("cImg").src="data:image/jpeg;base64,"+b64;else $("cImg").removeAttribute("src");
+  $("cVazio").hidden=!!b64;$("cVazio").textContent=c?"A foto não está neste celular. Ela pode ser aberta no Drive.":"Nenhuma foto anexada a esta despesa.";
+  $("cEstado").className="msg"+(c&&c.enviado?" ok":"");
+  $("cEstado").textContent=!c?"":c.enviado?"Foto enviada ao Drive.":nuvemAtiva()?"Foto aguardando envio ao Drive.":"Foto guardada só neste celular.";
+  $("cDrive").hidden=!(c&&c.url);$("cDel").hidden=!c;$("cDel").classList.remove("danger");$("cDel").textContent="Remover foto";
+  $("cFoto").textContent=c?"Trocar: tirar foto":"Tirar foto";$("cGal").textContent=c?"Trocar: galeria":"Galeria"}
+function abrirComp(e){compAtual=e.id;mostrarComp();$("ovC").hidden=false;$("ovC").scrollTop=0}
+function fecharComp(){$("ovC").hidden=true;compAtual=null;render()}
+$("ovCClose").onclick=fecharComp;
+async function trocarComp(origem){const e=lancPorId(compAtual);if(!e)return;const b64=await pedirFoto(origem);if(!b64)return;anexarComp(e,b64);mostrarComp()}
+$("cFoto").onclick=()=>trocarComp("camera");$("cGal").onclick=()=>trocarComp("galeria");
+$("cDrive").onclick=()=>{const e=lancPorId(compAtual);if(e&&e.comprovante&&e.comprovante.url&&NATIVE)Android.abrirLink(e.comprovante.url)};
+let cDelT;$("cDel").onclick=()=>{const b=$("cDel");if(!b.classList.contains("danger")){b.classList.add("danger");b.textContent="Confirmar remoção";cDelT=setTimeout(()=>{b.classList.remove("danger");b.textContent="Remover foto"},4000);return}
+  clearTimeout(cDelT);const e=lancPorId(compAtual);if(e)removerComp(e);mostrarComp()};
+
+/* ---------- nuvem (Google Drive) ---------- */
+const SCRIPT_GS="/**\n * Condomínio Caiapó – Prestação de contas no Google Drive\n *\n * Este script recebe do app os balancetes (imagem) e as fotos dos\n * comprovantes de despesa e grava tudo numa pasta do Drive desta conta,\n * organizada por mês. Os moradores recebem o link da pasta só para ver.\n *\n * Instalação: veja as instruções no próprio app, em \"Nuvem (Google Drive)\".\n */\n\nconst CODIGO = '__CODIGO__';\nconst PASTA = 'Condomínio Caiapó - Prestação de Contas';\n\nfunction doPost(e) {\n  const trava = LockService.getScriptLock();\n  try {\n    trava.waitLock(30000);\n    const d = JSON.parse(e.postData.contents);\n    if (d.token !== CODIGO) return resposta_({ ok: false, erro: 'codigo' });\n    const raiz = pasta_(DriveApp.getRootFolder(), PASTA);\n\n    if (d.acao === 'ping') {\n      raiz.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);\n      return resposta_({ ok: true, pasta: raiz.getUrl() });\n    }\n\n    if (d.acao === 'balancete') {\n      const mes = pasta_(raiz, d.rotulo);\n      apagaPorNome_(mes, d.nome);\n      const f = mes.createFile(arquivo_(d.b64, 'image/png', d.nome));\n      return resposta_({ ok: true, id: f.getId(), url: f.getUrl() });\n    }\n\n    if (d.acao === 'comprovante') {\n      const pasta = pasta_(pasta_(raiz, d.rotulo), 'Comprovantes');\n      if (d.anterior) apagaPorId_(d.anterior, raiz);\n      apagaPorNome_(pasta, d.nome);\n      const f = pasta.createFile(arquivo_(d.b64, 'image/jpeg', d.nome));\n      return resposta_({ ok: true, id: f.getId(), url: f.getUrl() });\n    }\n\n    if (d.acao === 'excluir') {\n      apagaPorId_(d.id, raiz);\n      return resposta_({ ok: true });\n    }\n\n    return resposta_({ ok: false, erro: 'acao' });\n  } catch (err) {\n    return resposta_({ ok: false, erro: String(err) });\n  } finally {\n    trava.releaseLock();\n  }\n}\n\nfunction doGet() {\n  return resposta_({ ok: true, app: 'condominio-caiapo' });\n}\n\nfunction resposta_(obj) {\n  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction pasta_(pai, nome) {\n  const it = pai.getFoldersByName(nome);\n  return it.hasNext() ? it.next() : pai.createFolder(nome);\n}\n\nfunction arquivo_(b64, tipo, nome) {\n  return Utilities.newBlob(Utilities.base64Decode(b64), tipo, nome);\n}\n\nfunction apagaPorNome_(pasta, nome) {\n  const it = pasta.getFilesByName(nome);\n  while (it.hasNext()) it.next().setTrashed(true);\n}\n\n/** Só apaga arquivos que estejam dentro da pasta de prestação de contas. */\nfunction apagaPorId_(id, raiz) {\n  try {\n    const f = DriveApp.getFileById(id);\n    let pais = f.getParents();\n    for (let nivel = 0; nivel < 4 && pais.hasNext(); nivel++) {\n      const p = pais.next();\n      if (p.getId() === raiz.getId()) { f.setTrashed(true); return; }\n      pais = p.getParents();\n    }\n  } catch (err) {\n    // arquivo já apagado ou inacessível: nada a fazer\n  }\n}\n";
+function garantirNuvem(){if(!data.nuvem||typeof data.nuvem!=="object")data.nuvem={desde:null,excluir:[]};if(!Array.isArray(data.nuvem.excluir))data.nuvem.excluir=[]}
+const cfgN=()=>data.config.nuvem||{};
+const nuvemAtiva=()=>NATIVE&&!!(cfgN().url&&cfgN().token&&cfgN().pasta);
+const rotuloMes=m=>m+" "+MESES[+m.split("-")[1]-1];
+const nomeComp=e=>("Comprovante - "+e.descricao+" - R$ "+fmtIn(e.valor)+" - "+e.id+".jpg").replace(/[\\/:*?"<>|]/g,"-");
+function primeiroMes(){const ms=mesesComDados();const a=[data.config.mesInicial,ms[0]].filter(Boolean).sort();return a[0]||nowM}
+function ultimoMes(){const ms=mesesComDados();const u=ms[ms.length-1];return u&&u>nowM?u:nowM}
+function nuvemMarcar(m){garantirNuvem();const d=data.nuvem.desde;if(!d||m<d){data.nuvem.desde=m;persist()}nuvemAgendar()}
+let nvTimer=null,nvSync=false,nvErro=null;
+function nuvemAgendar(ms){if(!nuvemAtiva())return;clearTimeout(nvTimer);nvTimer=setTimeout(sincronizar,ms==null?3000:ms)}
+const nvCbs={};let nvSeq=0;
+function chamar(obj,cfg){const c=cfg||cfgN();return new Promise(res=>{const k="n"+(++nvSeq);nvCbs[k]=res;
+  Android.enviarNuvem(c.url,JSON.stringify({token:c.token,...obj}),k)})}
+window.nuvemResposta=(k,txt)=>{const f=nvCbs[k];delete nvCbs[k];if(!f)return;let r=null;try{r=JSON.parse(txt)}catch(e){}
+  f(r&&typeof r==="object"?r:{ok:false,erro:"rede"})};
+async function gerarPng(m){if(!window.html2canvas)throw new Error("imagem");const el=$("fora");montarFolha(el,m);
+  const cv=await html2canvas(el,{scale:2,backgroundColor:"#ffffff"});return cv.toDataURL("image/png").split(",")[1]}
+function contarPendentes(){garantirNuvem();let n=data.nuvem.excluir.length+data.lancamentos.filter(e=>e.comprovante&&!e.comprovante.enviado).length;
+  if(data.nuvem.desde){const f=ultimoMes();let m=data.nuvem.desde;while(m<=f){n++;m=shift(m,1)}}return n}
+async function sincronizar(){
+  if(nvSync||!nuvemAtiva())return;nvSync=true;nvErro=null;nvMostrar();
+  try{
+    while(data.nuvem.excluir.length){const r=await chamar({acao:"excluir",id:data.nuvem.excluir[0]});if(!r.ok)throw r;data.nuvem.excluir.shift();persist()}
+    for(;;){
+      const e=data.lancamentos.find(x=>x.comprovante&&!x.comprovante.enviado);if(!e)break;
+      const c=e.comprovante,b64=Android.lerArquivo(c.arq);
+      if(!b64){const i=data.lancamentos.indexOf(e);data.lancamentos[i]={...e,comprovante:{...c,enviado:true}};persist();continue}
+      const r=await chamar({acao:"comprovante",rotulo:rotuloMes(e.mes),nome:nomeComp(e),b64,anterior:c.anterior||""});if(!r.ok)throw r;
+      const i=data.lancamentos.findIndex(x=>x.id===e.id),agora=i>=0?data.lancamentos[i]:null;
+      if(agora&&agora.comprovante&&agora.comprovante.arq===c.arq)data.lancamentos[i]={...agora,comprovante:{arq:c.arq,id:r.id,url:r.url,enviado:true}};
+      else if(agora&&agora.comprovante){data.lancamentos[i]={...agora,comprovante:{...agora.comprovante,anterior:r.id}}}
+      else data.nuvem.excluir.push(r.id);
+      persist()}
+    const fim=ultimoMes();
+    while(data.nuvem.desde&&data.nuvem.desde<=fim){
+      const m=data.nuvem.desde;
+      if(m<data.config.mesInicial&&!doMes(m).length){data.nuvem.desde=shift(m,1);continue}
+      nvMostrar("Enviando balancete de "+mLabel(m)+"…");
+      const b64=await gerarPng(m);
+      const r=await chamar({acao:"balancete",rotulo:rotuloMes(m),nome:"Balancete "+rotuloMes(m)+".png",b64});if(!r.ok)throw r;
+      if(data.nuvem.desde===m){const p=shift(m,1);data.nuvem.desde=p>fim?null:p}
+      persist()}
+    if(data.nuvem.desde&&data.nuvem.desde>fim)data.nuvem.desde=null;
+    data.config={...data.config,nuvem:{...cfgN(),ultimoEnvio:Date.now()}};persist();
+  }catch(err){nvErro=err&&err.erro?err.erro:"rede"}
+  nvSync=false;nvMostrar();
+  if(nvErro){if(nvErro!=="codigo")nuvemAgendar(60000)}
+  else if(contarPendentes())nuvemAgendar(500)}
+function dataHoraCurta(ms){const d=new Date(ms),z=n=>String(n).padStart(2,"0");return z(d.getDate())+"/"+z(d.getMonth()+1)+" às "+z(d.getHours())+":"+z(d.getMinutes())}
+function nvMostrar(txt){
+  const st=$("nvStatus"),c=cfgN();$("nvLigada").hidden=!nuvemAtiva();$("nvUrl").value=$("nvUrl").value||c.url||"";
+  st.className="msg";
+  if(!NATIVE){st.textContent="Disponível no app instalado.";return}
+  if(!nuvemAtiva()){st.textContent="Nuvem não configurada. Os dados ficam só neste celular.";return}
+  const n=contarPendentes();
+  if(nvSync){st.textContent=txt||"Enviando para o Drive…";return}
+  if(nvErro==="codigo"){st.className="msg err";st.textContent="O Drive recusou o envio: o código do script não confere. Copie o script de novo e cole no Google.";return}
+  if(nvErro){st.className="msg err";st.textContent="Sem conexão com o Drive. "+n+(n===1?" envio pendente":" envios pendentes")+"; o app tenta de novo sozinho.";return}
+  if(n){st.textContent=n+(n===1?" envio pendente.":" envios pendentes.");return}
+  st.className="msg ok";st.textContent="Tudo enviado ao Drive"+(c.ultimoEnvio?", em "+dataHoraCurta(c.ultimoEnvio):"")+"."}
+function copiar(t){if(NATIVE)Android.copiarTexto(t);else if(navigator.clipboard)navigator.clipboard.writeText(t).catch(()=>{})}
+function gerarCodigo(){const a=new Uint8Array(18);crypto.getRandomValues(a);return Array.from(a,b=>"abcdefghijkmnpqrstuvwxyz23456789"[b%32]).join("")}
+$("nvScript").onclick=()=>{let c=cfgN();if(!c.token){data.config={...data.config,nuvem:{...c,token:gerarCodigo()}};persist();c=cfgN()}
+  copiar(SCRIPT_GS.replace("__CODIGO__",c.token));$("nvMsg").className="msg ok";$("nvMsg").textContent="Script copiado. Cole no script.google.com, na conta do condomínio."};
+$("nvConectar").onclick=async()=>{
+  const m=$("nvMsg"),url=$("nvUrl").value.trim(),c=cfgN();m.className="msg";
+  if(!NATIVE){m.textContent="Disponível no app instalado.";return}
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)){m.className="msg err";m.textContent="Cole a URL do app da Web, que começa com https://script.google.com/macros/s/ e termina em /exec.";return}
+  if(!c.token){m.className="msg err";m.textContent="Toque primeiro em Copiar script e cole o script no Google.";return}
+  $("nvConectar").disabled=true;m.textContent="Conectando…";
+  const r=await chamar({acao:"ping"},{url,token:c.token});$("nvConectar").disabled=false;
+  if(r.ok&&r.pasta){data.config={...data.config,nuvem:{...cfgN(),url,pasta:r.pasta}};garantirNuvem();data.nuvem.desde=primeiroMes();persist();
+    m.className="msg ok";m.textContent="Conectado. A pasta foi criada no Drive do condomínio e o envio começou.";$("nvCfg").open=false;nvErro=null;nvMostrar();nuvemAgendar(300)}
+  else if(r.erro==="codigo"){m.className="msg err";m.textContent="O script respondeu, mas o código não confere. Copie o script de novo, cole no Google e faça uma nova implantação."}
+  else{m.className="msg err";m.textContent="Não consegui falar com o script. Confira a URL, a internet e se a implantação está com acesso para Qualquer pessoa."}};
+$("nvLink").onclick=()=>{const p=cfgN().pasta;if(p){copiar(p);showStatus("Link da pasta copiado. Mande para os moradores.")}};
+$("nvAbrir").onclick=()=>{const p=cfgN().pasta;if(p&&NATIVE)Android.abrirLink(p)};
+let nvTudoT;$("nvTudo").onclick=()=>{const b=$("nvTudo");if(!b.classList.contains("danger")){b.classList.add("danger");b.textContent="Confirmar: reenviar tudo";nvTudoT=setTimeout(()=>{b.classList.remove("danger");b.textContent="Reenviar tudo"},4000);return}
+  clearTimeout(nvTudoT);b.classList.remove("danger");b.textContent="Reenviar tudo";
+  data.lancamentos=data.lancamentos.map(e=>e.comprovante?{...e,comprovante:{...e.comprovante,enviado:false,anterior:e.comprovante.id||e.comprovante.anterior||null}}:e);
+  data.nuvem.desde=primeiroMes();persist();nvErro=null;nvMostrar();nuvemAgendar(200)};
+window.addEventListener("online",()=>nuvemAgendar(500));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)nuvemAgendar(800)});
+setInterval(()=>{if(!nvSync&&contarPendentes())nuvemAgendar(0)},300000);
+
 /* ---------- navegação ---------- */
 function go(d){ui.mes=shift(ui.mes,d);$("fMes").dataset.follow="1";render();window.scrollTo(0,0)}
 $("prev").onclick=()=>go(-1);$("next").onclick=()=>go(1);
 function selTab(w){const l=w==="lancar";$("tab-lancar").setAttribute("aria-selected",l);$("tab-bal").setAttribute("aria-selected",!l);$("p-lancar").hidden=!l;$("p-bal").hidden=l;window.scrollTo(0,0)}
 $("tab-lancar").onclick=()=>selTab("lancar");$("tab-bal").onclick=()=>selTab("bal");
-window.voltar=()=>{if(!$("ov").hidden){fecharRecibo();return true}if(!$("p-bal").hidden){selTab("lancar");return true}return false};
+window.voltar=()=>{if(!$("ovC").hidden){fecharComp();return true}if(!$("ov").hidden){fecharRecibo();return true}if(!$("p-bal").hidden){selTab("lancar");return true}return false};
 
-fillCfg();fillRec();setTipo("despesa");render();
+garantirNuvem();fillCfg();fillRec();setTipo("despesa");render();nvMostrar();nuvemAgendar(1500);
 if(!NATIVE||!Android.loadData())persist();
 </script>
 </body>
