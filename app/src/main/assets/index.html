@@ -169,6 +169,10 @@ button:disabled{opacity:.5}
       <p class="msg" id="nvStatus"></p>
       <div id="nvLigada" class="form" hidden>
         <div class="btns"><button class="primary" id="nvLink">Copiar link para moradores</button><button class="ghost" id="nvAbrir">Abrir pasta</button></div>
+        <div class="row2" style="align-items:end">
+          <label>Moradores veem a partir de<input id="nvDesde" type="month"></label>
+          <button class="ghost" id="nvDesdeOk" type="button">Salvar</button>
+        </div>
         <button class="ghost" id="nvTudo">Reenviar tudo</button>
       </div>
       <details id="nvCfg"><summary class="hint" style="margin:0;color:var(--slate);font-weight:600">Configurar a nuvem</summary>
@@ -584,7 +588,7 @@ function mostrarComp(){
   $("cImg").hidden=!b64;if(b64)$("cImg").src="data:image/jpeg;base64,"+b64;else $("cImg").removeAttribute("src");
   $("cVazio").hidden=!!b64;$("cVazio").textContent=c?"A foto não está neste celular. Ela pode ser aberta no Drive.":"Nenhuma foto anexada a esta despesa.";
   $("cEstado").className="msg"+(c&&c.enviado?" ok":"");
-  $("cEstado").textContent=!c?"":c.enviado?"Foto enviada ao Drive.":nuvemAtiva()?"Foto aguardando envio ao Drive.":"Foto guardada só neste celular.";
+  $("cEstado").textContent=!c?"":c.enviado?"Foto enviada ao Drive.":!nuvemAtiva()?"Foto guardada só neste celular.":!publica(e.mes)?"Foto guardada só neste celular: este mês fica fora do que os moradores veem.":"Foto aguardando envio ao Drive.";
   $("cDrive").hidden=!(c&&c.url);$("cDel").hidden=!c;$("cDel").classList.remove("danger");$("cDel").textContent="Remover foto";
   $("cFoto").textContent=c?"Trocar: tirar foto":"Tirar foto";$("cGal").textContent=c?"Trocar: galeria":"Galeria"}
 function abrirComp(e){compAtual=e.id;mostrarComp();$("ovC").hidden=false;$("ovC").scrollTop=0}
@@ -600,6 +604,9 @@ let cDelT;$("cDel").onclick=()=>{const b=$("cDel");if(!b.classList.contains("dan
 const SCRIPT_GS="// Condomínio Caiapó – Prestação de contas no Google Drive\n//\n// Este script recebe do app os balancetes (imagem) e as fotos dos\n// comprovantes de despesa e grava tudo numa pasta do Drive desta conta,\n// organizada por mês. Os moradores recebem o link da pasta só para ver.\n//\n// Instalação: veja as instruções no próprio app, em \"Nuvem (Google Drive)\".\n\nconst CODIGO = '__CODIGO__';\nconst PASTA = 'Condomínio Caiapó - Prestação de Contas';\n\nfunction doPost(e) {\n  const trava = LockService.getScriptLock();\n  try {\n    trava.waitLock(30000);\n    const d = JSON.parse(e.postData.contents);\n    if (d.token !== CODIGO) return responder({ ok: false, erro: 'codigo' });\n    const raiz = pastaDe(DriveApp.getRootFolder(), PASTA);\n\n    if (d.acao === 'ping') {\n      raiz.setSharing(DriveApp.Access['ANYONE\\x5FWITH\\x5FLINK'], DriveApp.Permission.VIEW); // qualquer pessoa com o link pode ver\n      return responder({ ok: true, pasta: raiz.getUrl() });\n    }\n\n    if (d.acao === 'balancete') {\n      const mes = pastaDe(raiz, d.rotulo);\n      apagarPorNome(mes, d.nome);\n      const f = mes.createFile(criarArquivo(d.b64, 'image/png', d.nome));\n      return responder({ ok: true, id: f.getId(), url: f.getUrl() });\n    }\n\n    if (d.acao === 'comprovante') {\n      const pasta = pastaDe(pastaDe(raiz, d.rotulo), 'Comprovantes');\n      if (d.anterior) apagarPorId(d.anterior, raiz);\n      apagarPorNome(pasta, d.nome);\n      const f = pasta.createFile(criarArquivo(d.b64, 'image/jpeg', d.nome));\n      return responder({ ok: true, id: f.getId(), url: f.getUrl() });\n    }\n\n    if (d.acao === 'excluir') {\n      apagarPorId(d.id, raiz);\n      return responder({ ok: true });\n    }\n\n    return responder({ ok: false, erro: 'acao' });\n  } catch (err) {\n    return responder({ ok: false, erro: String(err) });\n  } finally {\n    trava.releaseLock();\n  }\n}\n\nfunction doGet() {\n  return responder({ ok: true, app: 'condominio-caiapo' });\n}\n\nfunction responder(obj) {\n  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction pastaDe(pai, nome) {\n  const it = pai.getFoldersByName(nome);\n  return it.hasNext() ? it.next() : pai.createFolder(nome);\n}\n\nfunction criarArquivo(b64, tipo, nome) {\n  return Utilities.newBlob(Utilities.base64Decode(b64), tipo, nome);\n}\n\nfunction apagarPorNome(pasta, nome) {\n  const it = pasta.getFilesByName(nome);\n  while (it.hasNext()) it.next().setTrashed(true);\n}\n\n// Só apaga arquivos que estejam dentro da pasta de prestação de contas.\nfunction apagarPorId(id, raiz) {\n  try {\n    const f = DriveApp.getFileById(id);\n    let pais = f.getParents();\n    for (let nivel = 0; nivel < 4 && pais.hasNext(); nivel++) {\n      const p = pais.next();\n      if (p.getId() === raiz.getId()) { f.setTrashed(true); return; }\n      pais = p.getParents();\n    }\n  } catch (err) {\n    // arquivo já apagado ou inacessível: nada a fazer\n  }\n}\n";
 function garantirNuvem(){if(!data.nuvem||typeof data.nuvem!=="object")data.nuvem={desde:null,excluir:[]};if(!Array.isArray(data.nuvem.excluir))data.nuvem.excluir=[]}
 const cfgN=()=>data.config.nuvem||{};
+const PUBLICAR_PADRAO="2026-06";
+const publicarDesde=()=>cfgN().publicarDesde||PUBLICAR_PADRAO;
+const publica=m=>m>=publicarDesde();
 const nuvemAtiva=()=>NATIVE&&!!(cfgN().url&&cfgN().token&&cfgN().pasta);
 const rotuloMes=m=>m+" "+MESES[+m.split("-")[1]-1];
 const nomeComp=e=>("Comprovante - "+e.descricao+" - R$ "+fmtIn(e.valor)+" - "+e.id+".jpg").replace(/[\\/:*?"<>|]/g,"-");
@@ -615,14 +622,14 @@ window.nuvemResposta=(k,txt)=>{const f=nvCbs[k];delete nvCbs[k];if(!f)return;let
   f(r&&typeof r==="object"?r:{ok:false,erro:"rede"})};
 async function gerarPng(m){if(!window.html2canvas)throw new Error("imagem");const el=$("fora");montarFolha(el,m);
   const cv=await html2canvas(el,{scale:2,backgroundColor:"#ffffff"});return cv.toDataURL("image/png").split(",")[1]}
-function contarPendentes(){garantirNuvem();let n=data.nuvem.excluir.length+data.lancamentos.filter(e=>e.comprovante&&!e.comprovante.enviado).length;
-  if(data.nuvem.desde){const f=ultimoMes();let m=data.nuvem.desde;while(m<=f){n++;m=shift(m,1)}}return n}
+function contarPendentes(){garantirNuvem();let n=data.nuvem.excluir.length+data.lancamentos.filter(e=>e.comprovante&&!e.comprovante.enviado&&publica(e.mes)).length;
+  if(data.nuvem.desde){const f=ultimoMes();let m=data.nuvem.desde<publicarDesde()?publicarDesde():data.nuvem.desde;while(m<=f){n++;m=shift(m,1)}}return n}
 async function sincronizar(){
   if(nvSync||!nuvemAtiva())return;nvSync=true;nvErro=null;nvMostrar();
   try{
     while(data.nuvem.excluir.length){const r=await chamar({acao:"excluir",id:data.nuvem.excluir[0]});if(!r.ok)throw r;data.nuvem.excluir.shift();persist()}
     for(;;){
-      const e=data.lancamentos.find(x=>x.comprovante&&!x.comprovante.enviado);if(!e)break;
+      const e=data.lancamentos.find(x=>x.comprovante&&!x.comprovante.enviado&&publica(x.mes));if(!e)break;
       const c=e.comprovante,b64=Android.lerArquivo(c.arq);
       if(!b64){const i=data.lancamentos.indexOf(e);data.lancamentos[i]={...e,comprovante:{...c,enviado:true}};persist();continue}
       const r=await chamar({acao:"comprovante",rotulo:rotuloMes(e.mes),nome:nomeComp(e),b64,anterior:c.anterior||""});if(!r.ok)throw r;
@@ -634,6 +641,7 @@ async function sincronizar(){
     const fim=ultimoMes();
     while(data.nuvem.desde&&data.nuvem.desde<=fim){
       const m=data.nuvem.desde;
+      if(!publica(m)){data.nuvem.desde=publicarDesde();continue}
       if(m<data.config.mesInicial&&!doMes(m).length){data.nuvem.desde=shift(m,1);continue}
       nvMostrar("Enviando balancete de "+mLabel(m)+"…");
       const b64=await gerarPng(m);
@@ -648,7 +656,7 @@ async function sincronizar(){
   else if(contarPendentes())nuvemAgendar(500)}
 function dataHoraCurta(ms){const d=new Date(ms),z=n=>String(n).padStart(2,"0");return z(d.getDate())+"/"+z(d.getMonth()+1)+" às "+z(d.getHours())+":"+z(d.getMinutes())}
 function nvMostrar(txt){
-  const st=$("nvStatus"),c=cfgN();$("nvLigada").hidden=!nuvemAtiva();$("nvUrl").value=$("nvUrl").value||c.url||"";
+  const st=$("nvStatus"),c=cfgN();if(document.activeElement!==$("nvDesde"))$("nvDesde").value=publicarDesde();$("nvLigada").hidden=!nuvemAtiva();$("nvUrl").value=$("nvUrl").value||c.url||"";
   st.className="msg";
   if(!NATIVE){st.textContent="Disponível no app instalado.";return}
   if(!nuvemAtiva()){st.textContent="Nuvem não configurada. Os dados ficam só neste celular.";return}
@@ -679,6 +687,11 @@ let nvTudoT;$("nvTudo").onclick=()=>{const b=$("nvTudo");if(!b.classList.contain
   clearTimeout(nvTudoT);b.classList.remove("danger");b.textContent="Reenviar tudo";
   data.lancamentos=data.lancamentos.map(e=>e.comprovante?{...e,comprovante:{...e.comprovante,enviado:false,anterior:e.comprovante.id||e.comprovante.anterior||null}}:e);
   data.nuvem.desde=primeiroMes();persist();nvErro=null;nvMostrar();nuvemAgendar(200)};
+$("nvDesdeOk").onclick=()=>{const v=$("nvDesde").value;if(!/^\d{4}-\d{2}$/.test(v)){showStatus("Escolha o mês.");return}
+  const antes=publicarDesde();data.config={...data.config,nuvem:{...cfgN(),publicarDesde:v}};persist();
+  if(v<antes){nuvemMarcar(v);showStatus("Os meses a partir de "+mLabel(v)+" vão ser enviados ao Drive.")}
+  else showStatus("A partir de agora só vão para o Drive os meses de "+mLabel(v)+" em diante. Apague no Drive as pastas dos meses anteriores.");
+  nvMostrar()};
 window.addEventListener("online",()=>nuvemAgendar(500));
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)nuvemAgendar(800)});
 setInterval(()=>{if(!nvSync&&contarPendentes())nuvemAgendar(0)},300000);
