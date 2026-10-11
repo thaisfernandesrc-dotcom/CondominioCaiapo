@@ -39,6 +39,8 @@ h2{font:600 15px var(--f-head);color:var(--slate);margin:0 0 8px;letter-spacing:
 .unit .st{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--slate)}
 .unit.paid{background:var(--in-soft);border-color:transparent}
 .unit.paid .st{color:var(--in)}
+.unit.atraso .st{color:var(--out)}
+.unit .st.avencer{color:var(--muted);font-weight:500}
 .unit.arm{background:var(--slate);color:var(--surface)}.unit.arm .st{color:var(--surface)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
 .form{display:grid;gap:10px}
@@ -128,7 +130,7 @@ button:disabled{opacity:.5}
 <main id="p-lancar">
   <section>
     <h2>Cotas do mês</h2>
-    <p class="hint">Toque numa unidade em aberto e toque de novo para confirmar o pagamento. Toque numa unidade paga para emitir o recibo.</p>
+    <p class="hint">Toque numa unidade que não pagou e toque de novo para confirmar o pagamento. Toque numa unidade paga para emitir o recibo.</p>
     <div class="units" id="units"></div>
   </section>
 
@@ -320,6 +322,19 @@ let ui={mes:null,tipo:"despesa",compB64:""};
 const mesesComDados=()=>[...new Set(data.lancamentos.map(e=>e.mes))].sort();
 ui.mes=mesesComDados().includes(nowM)||!data.lancamentos.length?nowM:mesesComDados().pop();
 
+/* ---------- vencimento (dia 10, ou próximo dia útil) ---------- */
+function pascoa(a){const b=a%19,c=Math.floor(a/100),d=a%100,e=Math.floor(c/4),f=c%4,g=Math.floor((c+8)/25),h=Math.floor((c-g+1)/3),
+  i=(19*b+c-e-h+15)%30,k=Math.floor(d/4),l=d%4,m=(32+2*f+2*e-i-k-l)%7,n=Math.floor((b+11*i+22*m)/451),mes=Math.floor((i+m-7*n+114)/31),dia=((i+m-7*n+114)%31)+1;return new Date(a,mes-1,dia)}
+const chaveDia=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function feriados(a){const f=new Set(["01-01","04-21","05-01","09-07","10-12","11-02","11-15","11-20","12-25"].map(x=>a+"-"+x));
+  const p=pascoa(a),soma=n=>chaveDia(new Date(p.getFullYear(),p.getMonth(),p.getDate()+n));
+  [-48,-47,-2,60].forEach(n=>f.add(soma(n)));return f}  /* carnaval (seg e ter), sexta-feira santa, corpus christi */
+function vencimento(m){const[y,mm]=m.split("-").map(Number);const d=new Date(y,mm-1,10),fer=feriados(y);
+  while(d.getDay()===0||d.getDay()===6||fer.has(chaveDia(d)))d.setDate(d.getDate()+1);return d}
+const hojeChave=()=>chaveDia(new Date());
+const emAtraso=m=>hojeChave()>chaveDia(vencimento(m));
+const fmtDia=d=>String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0");
+
 /* ---------- cálculo ---------- */
 const doMes=m=>data.lancamentos.filter(e=>e.mes===m);
 function somas(list){let rec=0,des=0;for(const e of list){if(e.tipo==="despesa")des+=e.valor;else rec+=e.valor}return{rec,des}}
@@ -335,16 +350,17 @@ function render(){
   const me=doMes(ui.mes),pg=pagos(me),cota=data.config.cota||22000;
   const box=$("units");box.innerHTML="";
   for(const[id,name]of UNITS){
-    const b=document.createElement("button");b.type="button";b.className="unit"+(pg[id]?" paid":"");
+    const atr=!pg[id]&&emAtraso(ui.mes),rotulo=atr?"Em atraso":"A vencer";
+    const b=document.createElement("button");b.type="button";b.className="unit"+(pg[id]?" paid":atr?" atraso":"");
     const n=document.createElement("span");n.textContent=name;
-    const s=document.createElement("span");s.className="st";s.textContent=pg[id]?brl(pg[id]):"+ "+fmtIn(cota);
+    const s=document.createElement("span");s.className="st"+(!pg[id]&&!atr?" avencer":"");s.textContent=pg[id]?brl(pg[id]):rotulo;
     b.append(n,s);
     if(pg[id]){const e=me.find(y=>y.tipo==="cota"&&y.unidade===id);b.onclick=()=>abrirRecibo(e)}
     if(!pg[id]){let t;b.onclick=()=>{
-      if(!b.classList.contains("arm")){document.querySelectorAll(".unit.arm").forEach(x=>{x.classList.remove("arm");x.lastChild.textContent="+ "+fmtIn(cota)});
-        b.classList.add("arm");s.textContent="Confirmar";t=setTimeout(()=>{b.classList.remove("arm");s.textContent="+ "+fmtIn(cota)},4000);return}
+      if(!b.classList.contains("arm")){document.querySelectorAll(".unit.arm").forEach(x=>{x.classList.remove("arm");x.lastChild.textContent=x.dataset.rotulo});
+        b.classList.add("arm");s.textContent="Pagou "+fmtIn(cota)+"?";t=setTimeout(()=>{b.classList.remove("arm");s.textContent=rotulo},4000);return}
       clearTimeout(t);adicionar({tipo:"cota",unidade:id,descricao:name,valor:cota,mes:ui.mes})}}
-    box.append(b)}
+    b.dataset.rotulo=rotulo;box.append(b)}
   const ul=$("list");ul.innerHTML="";
   const ord={cota:0,receita:1,despesa:2},ui_=u=>UNITS.findIndex(x=>x[0]===u);
   const lista=[...me].sort((a,b)=>ord[a.tipo]-ord[b.tipo]||(a.tipo==="cota"?ui_(a.unidade)-ui_(b.unidade):(a.criadoEm||0)-(b.criadoEm||0)));
@@ -373,7 +389,8 @@ function balancete(m){
   const me=doMes(m),{rec,des}=somas(me),sa=saldoAnterior(m),pg=pagos(me);
   const outras=me.filter(e=>e.tipo==="receita").sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
   const desp=me.filter(e=>e.tipo==="despesa").sort((a,b)=>(a.criadoEm||0)-(b.criadoEm||0));
-  const totRec=rec+(sa||0);return{me,rec,des,sa,pg,outras,desp,totRec,fin:totRec-des,abertas:UNITS.filter(u=>!pg[u[0]]).length}
+  const abertas=UNITS.filter(u=>!pg[u[0]]).length,atr=emAtraso(m);
+  const totRec=rec+(sa||0);return{me,rec,des,sa,pg,outras,desp,totRec,fin:totRec-des,abertas,atr,venc:vencimento(m)}
 }
 function renderSheet(){montarFolha($("sheet"),ui.mes)}
 function montarFolha(sh,m){
@@ -384,7 +401,7 @@ function montarFolha(sh,m){
   const h=document.createElement("h3");h.textContent=MESES[+mm-1];sh.append(h);
   const h4=t=>{const e=document.createElement("h4");e.textContent=t;sh.append(e)};
   h4("1. Controle de Pagamento e Receitas Recebidas");
-  for(const[id,name]of UNITS)sh.append(B.pg[id]?linha(name,brl(B.pg[id]),"in"):linha(name,"em aberto","","open"));
+  for(const[id,name]of UNITS)sh.append(B.pg[id]?linha(name,brl(B.pg[id]),"in"):(B.atr?linha(name,"Em atraso","out"):linha(name,"A vencer","","open")));
   sh.append(B.sa==null?linha("Saldo Anterior em Caixa","—","","open"):linha("Saldo Anterior em Caixa",brl(B.sa),B.sa<0?"out":"in"));
   if(!B.outras.length)sh.append(linha("Outras Receitas","—","","open"));
   for(const e of B.outras)sh.append(linha(e.descricao,brl(e.valor),"in"));
@@ -397,7 +414,7 @@ function montarFolha(sh,m){
   sh.append(linha("Saldo Final em Caixa",brl(B.fin),B.fin<0?"out":"in","big"));
   sh.append(linha("Resultado do mês (sem saldo anterior)",brl(B.rec-B.des),B.rec-B.des<0?"out":"in","sub"));
   const n=document.createElement("p");n.className="note";
-  n.textContent=(B.abertas?B.abertas+(B.abertas>1?" unidades em aberto. ":" unidade em aberto. "):"Todas as cotas pagas. ")+(B.sa==null?"Mês anterior ao início do controle: sem saldo anterior.":(B.sa<0?"Total de Receitas inclui o saldo anterior negativo.":"Total de Receitas inclui o saldo anterior."));
+  n.textContent=(!B.abertas?"Todas as cotas pagas. ":B.abertas+(B.abertas>1?" unidades ":" unidade ")+(B.atr?"Em atraso":"A vencer")+" (vencimento "+fmtDia(B.venc)+"). ")+(B.sa==null?"Mês anterior ao início do controle: sem saldo anterior.":(B.sa<0?"Total de Receitas inclui o saldo anterior negativo.":"Total de Receitas inclui o saldo anterior."));
   sh.append(n);
 }
 
@@ -614,6 +631,9 @@ function primeiroMes(){const ms=mesesComDados();const a=[data.config.mesInicial,
 function ultimoMes(){const ms=mesesComDados();const u=ms[ms.length-1];return u&&u>nowM?u:nowM}
 function nuvemMarcar(m){garantirNuvem();const d=data.nuvem.desde;if(!d||m<d){data.nuvem.desde=m;persist()}nuvemAgendar()}
 let nvTimer=null,nvSync=false,nvErro=null;
+/* o status A vencer/Em atraso muda com a data: reenvia o mês quando passa o vencimento */
+function verificarFases(){if(!nuvemAtiva())return;garantirNuvem();const fs=data.nuvem.fase||{},fim=ultimoMes();
+  for(let m=publicarDesde();m<=fim;m=shift(m,1)){if(fs[m]!==(emAtraso(m)?"d":"a")){nuvemMarcar(m);return}}}
 function nuvemAgendar(ms){if(!nuvemAtiva())return;clearTimeout(nvTimer);nvTimer=setTimeout(sincronizar,ms==null?3000:ms)}
 const nvCbs={};let nvSeq=0;
 function chamar(obj,cfg){const c=cfg||cfgN();return new Promise(res=>{const k="n"+(++nvSeq);nvCbs[k]=res;
@@ -644,8 +664,10 @@ async function sincronizar(){
       if(!publica(m)){data.nuvem.desde=publicarDesde();continue}
       if(m<data.config.mesInicial&&!doMes(m).length){data.nuvem.desde=shift(m,1);continue}
       nvMostrar("Enviando balancete de "+mLabel(m)+"…");
+      const fase=emAtraso(m)?"d":"a";
       const b64=await gerarPng(m);
       const r=await chamar({acao:"balancete",rotulo:rotuloMes(m),nome:"Balancete "+rotuloMes(m)+".png",b64});if(!r.ok)throw r;
+      data.nuvem.fase={...(data.nuvem.fase||{}),[m]:fase};
       if(data.nuvem.desde===m){const p=shift(m,1);data.nuvem.desde=p>fim?null:p}
       persist()}
     if(data.nuvem.desde&&data.nuvem.desde>fim)data.nuvem.desde=null;
@@ -693,7 +715,8 @@ $("nvDesdeOk").onclick=()=>{const v=$("nvDesde").value;if(!/^\d{4}-\d{2}$/.test(
   else showStatus("A partir de agora só vão para o Drive os meses de "+mLabel(v)+" em diante. Apague no Drive as pastas dos meses anteriores.");
   nvMostrar()};
 window.addEventListener("online",()=>nuvemAgendar(500));
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)nuvemAgendar(800)});
+setInterval(verificarFases,600000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){verificarFases();render();nuvemAgendar(800)}});
 setInterval(()=>{if(!nvSync&&contarPendentes())nuvemAgendar(0)},300000);
 
 /* ---------- navegação ---------- */
@@ -703,7 +726,7 @@ function selTab(w){const l=w==="lancar";$("tab-lancar").setAttribute("aria-selec
 $("tab-lancar").onclick=()=>selTab("lancar");$("tab-bal").onclick=()=>selTab("bal");
 window.voltar=()=>{if(!$("ovC").hidden){fecharComp();return true}if(!$("ov").hidden){fecharRecibo();return true}if(!$("p-bal").hidden){selTab("lancar");return true}return false};
 
-garantirNuvem();fillCfg();fillRec();setTipo("despesa");render();nvMostrar();nuvemAgendar(1500);
+garantirNuvem();fillCfg();fillRec();setTipo("despesa");render();nvMostrar();verificarFases();nuvemAgendar(1500);
 if(!NATIVE||!Android.loadData())persist();
 </script>
 </body>
