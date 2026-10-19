@@ -171,7 +171,8 @@ button:disabled{opacity:.5}
     <div class="card form">
       <p class="msg" id="nvStatus"></p>
       <div id="nvLigada" class="form" hidden>
-        <div class="btns"><button class="primary" id="nvLink">Copiar link para moradores</button><button class="ghost" id="nvAbrir">Abrir pasta</button></div>
+        <div class="btns"><button class="primary" id="nvLink">Copiar link do site</button><button class="ghost" id="nvAbrir">Abrir site</button></div>
+        <div class="btns"><button class="ghost" id="nvLinkComp">Copiar link dos comprovantes</button><button class="ghost" id="nvAbrirComp">Abrir pasta</button></div>
         <div class="row2" style="align-items:end">
           <label>Moradores veem a partir de<input id="nvDesde" type="month"></label>
           <button class="ghost" id="nvDesdeOk" type="button">Salvar</button>
@@ -186,6 +187,7 @@ button:disabled{opacity:.5}
             <li>Clique em <b>Implantar → Nova implantação</b>. Em tipo, escolha <b>App da Web</b>. Executar como: <b>Eu</b>. Quem pode acessar: <b>Qualquer pessoa</b>. Clique em Implantar e autorize com a conta do condomínio.</li>
             <li>Copie a <b>URL do app da Web</b> (termina em /exec), cole abaixo e toque em Conectar.</li>
           </ol>
+          <p class="hint" style="margin:0"><b>Para atualizar um script que já existe:</b> copie o script, cole no lugar de todo o texto do projeto, salve e vá em <b>Implantar → Gerenciar implantações</b>, toque no lápis, em Versão escolha <b>Nova versão</b> e clique em Implantar. O endereço continua o mesmo.</p>
           <button class="ghost" id="nvScript" type="button">Copiar script</button>
           <label>URL do app da Web<input id="nvUrl" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec"></label>
           <button class="primary" id="nvConectar" type="button">Conectar</button>
@@ -394,28 +396,38 @@ function balancete(m){
   const totRec=rec+(sa||0);return{me,rec,des,sa,pg,outras,desp,totRec,fin:totRec-des,abertas,atr,venc:vencimento(m)}
 }
 function renderSheet(){montarFolha($("sheet"),ui.mes)}
+/* modelo do balancete: o app e o site desenham a partir dele */
+function modeloFolha(m){
+  const[y,mm]=m.split("-"),B=balancete(m),it=[];
+  const h4=x=>it.push({t:"h4",x}),ln=(a,b,c,e)=>it.push({t:"ln",a,b,c:c||"",e:e||""});
+  h4("1. Controle de Pagamento e Receitas Recebidas");
+  for(const[id,name]of UNITS){if(B.pg[id])ln(name,brl(B.pg[id]),"in");else it.push({t:"ln",a:name,p:1})}
+  if(B.sa==null)ln("Saldo Anterior em Caixa","—","","open");else ln("Saldo Anterior em Caixa",brl(B.sa),B.sa<0?"out":"in");
+  if(!B.outras.length)ln("Outras Receitas","—","","open");
+  for(const e of B.outras)ln(e.descricao,brl(e.valor),"in");
+  h4("2. Despesas Pagas");
+  if(!B.desp.length)ln("Nenhuma despesa lançada","—","","open");
+  for(const e of B.desp)ln(e.descricao,brl(e.valor),"out");
+  h4("3. Apuração do Resultado Mensal");
+  ln("Total de Receitas",brl(B.totRec),B.totRec<0?"out":"in");
+  ln("Total de Despesas",brl(B.des),"out");
+  ln("Saldo Final em Caixa",brl(B.fin),B.fin<0?"out":"in","big");
+  ln("Resultado do mês (sem saldo anterior)",brl(B.rec-B.des),B.rec-B.des<0?"out":"in","sub");
+  const resto=B.sa==null?"Mês anterior ao início do controle: sem saldo anterior.":(B.sa<0?"Total de Receitas inclui o saldo anterior negativo.":"Total de Receitas inclui o saldo anterior.");
+  return{ano:y,nome:MESES[+mm-1],venc:chaveDia(B.venc),ab:B.abertas,resto,itens:it}
+}
 function montarFolha(sh,m){
-  const[y,mm]=m.split("-"),B=balancete(m);sh.innerHTML="";
+  const F=modeloFolha(m),atr=emAtraso(m);sh.innerHTML="";
   const top=document.createElement("div");top.className="top";
   top.innerHTML='<div class="logo">'+LOGO+'</div>';
-  const tt=document.createElement("div");tt.className="tt";tt.innerHTML="Condomínio do Edifício Caiapó 83, 85 e 87<br>Balancete Mensal | Exercício "+y;top.append(tt);sh.append(top);
-  const h=document.createElement("h3");h.textContent=MESES[+mm-1];sh.append(h);
-  const h4=t=>{const e=document.createElement("h4");e.textContent=t;sh.append(e)};
-  h4("1. Controle de Pagamento e Receitas Recebidas");
-  for(const[id,name]of UNITS)sh.append(B.pg[id]?linha(name,brl(B.pg[id]),"in"):(B.atr?linha(name,"Em atraso","out"):linha(name,"A vencer","","open")));
-  sh.append(B.sa==null?linha("Saldo Anterior em Caixa","—","","open"):linha("Saldo Anterior em Caixa",brl(B.sa),B.sa<0?"out":"in"));
-  if(!B.outras.length)sh.append(linha("Outras Receitas","—","","open"));
-  for(const e of B.outras)sh.append(linha(e.descricao,brl(e.valor),"in"));
-  h4("2. Despesas Pagas");
-  if(!B.desp.length)sh.append(linha("Nenhuma despesa lançada","—","","open"));
-  for(const e of B.desp)sh.append(linha(e.descricao,brl(e.valor),"out"));
-  h4("3. Apuração do Resultado Mensal");
-  sh.append(linha("Total de Receitas",brl(B.totRec),B.totRec<0?"out":"in"));
-  sh.append(linha("Total de Despesas",brl(B.des),"out"));
-  sh.append(linha("Saldo Final em Caixa",brl(B.fin),B.fin<0?"out":"in","big"));
-  sh.append(linha("Resultado do mês (sem saldo anterior)",brl(B.rec-B.des),B.rec-B.des<0?"out":"in","sub"));
-  const n=document.createElement("p");n.className="note";
-  n.textContent=(!B.abertas?"Todas as cotas pagas. ":B.abertas+(B.abertas>1?" unidades ":" unidade ")+(B.atr?"Em atraso":"A vencer")+" (vencimento "+fmtDia(B.venc)+"). ")+(B.sa==null?"Mês anterior ao início do controle: sem saldo anterior.":(B.sa<0?"Total de Receitas inclui o saldo anterior negativo.":"Total de Receitas inclui o saldo anterior."));
+  const tt=document.createElement("div");tt.className="tt";tt.innerHTML="Condomínio do Edifício Caiapó 83, 85 e 87<br>Balancete Mensal | Exercício "+F.ano;top.append(tt);sh.append(top);
+  const h=document.createElement("h3");h.textContent=F.nome;sh.append(h);
+  for(const x of F.itens){
+    if(x.t==="h4"){const e=document.createElement("h4");e.textContent=x.x;sh.append(e)}
+    else if(x.p)sh.append(atr?linha(x.a,"Em atraso","out"):linha(x.a,"A vencer","","open"));
+    else sh.append(linha(x.a,x.b,x.c,x.e))}
+  const n=document.createElement("p"),vd=F.venc.split("-");n.className="note";
+  n.textContent=(!F.ab?"Todas as cotas pagas. ":F.ab+(F.ab>1?" unidades ":" unidade ")+(atr?"Em atraso":"A vencer")+" (vencimento "+vd[2]+"/"+vd[1]+"). ")+F.resto;
   sh.append(n);
 }
 
@@ -619,7 +631,7 @@ let cDelT;$("cDel").onclick=()=>{const b=$("cDel");if(!b.classList.contains("dan
   clearTimeout(cDelT);const e=lancPorId(compAtual);if(e)removerComp(e);mostrarComp()};
 
 /* ---------- nuvem (Google Drive) ---------- */
-const SCRIPT_GS="// Condomínio Caiapó – Prestação de contas no Google Drive\n//\n// Este script recebe do app os balancetes (imagem) e as fotos dos\n// comprovantes de despesa e grava tudo numa pasta do Drive desta conta,\n// organizada por mês. Os moradores recebem o link da pasta só para ver.\n//\n// Instalação: veja as instruções no próprio app, em \"Nuvem (Google Drive)\".\n\nconst CODIGO = '__CODIGO__';\nconst PASTA = 'Condomínio Caiapó - Prestação de Contas';\n\nfunction doPost(e) {\n  const trava = LockService.getScriptLock();\n  try {\n    trava.waitLock(30000);\n    const d = JSON.parse(e.postData.contents);\n    if (d.token !== CODIGO) return responder({ ok: false, erro: 'codigo' });\n    const raiz = pastaDe(DriveApp.getRootFolder(), PASTA);\n\n    if (d.acao === 'ping') {\n      raiz.setSharing(DriveApp.Access['ANYONE\\x5FWITH\\x5FLINK'], DriveApp.Permission.VIEW); // qualquer pessoa com o link pode ver\n      return responder({ ok: true, pasta: raiz.getUrl() });\n    }\n\n    if (d.acao === 'balancete') {\n      const mes = pastaDe(raiz, d.rotulo);\n      apagarPorNome(mes, d.nome);\n      const f = mes.createFile(criarArquivo(d.b64, 'image/png', d.nome));\n      return responder({ ok: true, id: f.getId(), url: f.getUrl() });\n    }\n\n    if (d.acao === 'comprovante') {\n      const pasta = pastaDe(pastaDe(raiz, d.rotulo), 'Comprovantes');\n      if (d.anterior) apagarPorId(d.anterior, raiz);\n      apagarPorNome(pasta, d.nome);\n      const f = pasta.createFile(criarArquivo(d.b64, 'image/jpeg', d.nome));\n      return responder({ ok: true, id: f.getId(), url: f.getUrl() });\n    }\n\n    if (d.acao === 'excluir') {\n      apagarPorId(d.id, raiz);\n      return responder({ ok: true });\n    }\n\n    return responder({ ok: false, erro: 'acao' });\n  } catch (err) {\n    return responder({ ok: false, erro: String(err) });\n  } finally {\n    trava.releaseLock();\n  }\n}\n\nfunction doGet() {\n  return responder({ ok: true, app: 'condominio-caiapo' });\n}\n\nfunction responder(obj) {\n  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction pastaDe(pai, nome) {\n  const it = pai.getFoldersByName(nome);\n  return it.hasNext() ? it.next() : pai.createFolder(nome);\n}\n\nfunction criarArquivo(b64, tipo, nome) {\n  return Utilities.newBlob(Utilities.base64Decode(b64), tipo, nome);\n}\n\nfunction apagarPorNome(pasta, nome) {\n  const it = pasta.getFilesByName(nome);\n  while (it.hasNext()) it.next().setTrashed(true);\n}\n\n// Só apaga arquivos que estejam dentro da pasta de prestação de contas.\nfunction apagarPorId(id, raiz) {\n  try {\n    const f = DriveApp.getFileById(id);\n    let pais = f.getParents();\n    for (let nivel = 0; nivel < 4 && pais.hasNext(); nivel++) {\n      const p = pais.next();\n      if (p.getId() === raiz.getId()) { f.setTrashed(true); return; }\n      pais = p.getParents();\n    }\n  } catch (err) {\n    // arquivo já apagado ou inacessível: nada a fazer\n  }\n}\n";
+const SCRIPT_GS="// Condomínio Caiapó – Balancetes e comprovantes\n//\n// Este script faz duas coisas para o app do condomínio:\n// 1. mostra o site dos balancetes para os moradores (este mesmo endereço);\n// 2. guarda as fotos dos comprovantes de despesa numa pasta do Drive desta\n//    conta, organizada por mês, com link só para ver.\n//\n// Instalação: veja as instruções no próprio app, em \"Nuvem (Google Drive)\".\n\nconst CODIGO = '__CODIGO__';\nconst PASTA = 'Condomínio Caiapó - Prestação de Contas';\n\nfunction doPost(e) {\n  const trava = LockService.getScriptLock();\n  try {\n    trava.waitLock(30000);\n    const d = JSON.parse(e.postData.contents);\n    if (d.token !== CODIGO) return responder({ ok: false, erro: 'codigo' });\n    const raiz = pastaDe(DriveApp.getRootFolder(), PASTA);\n    const props = PropertiesService.getScriptProperties();\n\n    if (d.acao === 'ping') {\n      raiz.setSharing(DriveApp.Access['ANYONE\\x5FWITH\\x5FLINK'], DriveApp.Permission.VIEW); // qualquer pessoa com o link pode ver\n      return responder({ ok: true, pasta: raiz.getUrl(), site: true });\n    }\n\n    if (d.acao === 'folha') {\n      props.setProperty('mes:' + d.mes, JSON.stringify(d.folha));\n      props.setProperty('info', JSON.stringify({ atualizado: new Date().toISOString(), pasta: raiz.getUrl() }));\n      // tira do site os meses antes do período que os moradores veem\n      const todas = props.getProperties();\n      Object.keys(todas).forEach(function (k) {\n        if (k.indexOf('mes:') === 0 && d.desde && k.slice(4) < d.desde) props.deleteProperty(k);\n      });\n      // apaga do Drive a imagem antiga do balancete deste mês, se existir\n      const it = raiz.getFoldersByName(d.rotulo);\n      if (it.hasNext()) apagarPorNome(it.next(), 'Balancete ' + d.rotulo + '.png');\n      return responder({ ok: true });\n    }\n\n    if (d.acao === 'comprovante') {\n      const pasta = pastaDe(pastaDe(raiz, d.rotulo), 'Comprovantes');\n      if (d.anterior) apagarPorId(d.anterior, raiz);\n      apagarPorNome(pasta, d.nome);\n      const f = pasta.createFile(criarArquivo(d.b64, 'image/jpeg', d.nome));\n      return responder({ ok: true, id: f.getId(), url: f.getUrl() });\n    }\n\n    if (d.acao === 'excluir') {\n      apagarPorId(d.id, raiz);\n      return responder({ ok: true });\n    }\n\n    return responder({ ok: false, erro: 'acao' });\n  } catch (err) {\n    return responder({ ok: false, erro: String(err) });\n  } finally {\n    trava.releaseLock();\n  }\n}\n\n// O site dos balancetes\nfunction doGet() {\n  const json = JSON.stringify(dados()).split('<').join('\\\\u003c');\n  return HtmlService.createHtmlOutput(PAGINA.split('DADOSAQUI').join(json))\n    .setTitle('Condomínio Caiapó – Balancetes')\n    .addMetaTag('viewport', 'width=device-width, initial-scale=1');\n}\n\n// Chamado pelo site a cada minuto para mostrar as mudanças sem recarregar\nfunction dados() {\n  const todas = PropertiesService.getScriptProperties().getProperties();\n  const out = { meses: {}, info: JSON.parse(todas.info || '{}') };\n  Object.keys(todas).forEach(function (k) {\n    if (k.indexOf('mes:') === 0) out.meses[k.slice(4)] = JSON.parse(todas[k]);\n  });\n  return out;\n}\n\nfunction responder(obj) {\n  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction pastaDe(pai, nome) {\n  const it = pai.getFoldersByName(nome);\n  return it.hasNext() ? it.next() : pai.createFolder(nome);\n}\n\nfunction criarArquivo(b64, tipo, nome) {\n  return Utilities.newBlob(Utilities.base64Decode(b64), tipo, nome);\n}\n\nfunction apagarPorNome(pasta, nome) {\n  const it = pasta.getFilesByName(nome);\n  while (it.hasNext()) it.next().setTrashed(true);\n}\n\n// Só apaga arquivos que estejam dentro da pasta de prestação de contas.\nfunction apagarPorId(id, raiz) {\n  try {\n    const f = DriveApp.getFileById(id);\n    let pais = f.getParents();\n    for (let nivel = 0; nivel < 4 && pais.hasNext(); nivel++) {\n      const p = pais.next();\n      if (p.getId() === raiz.getId()) { f.setTrashed(true); return; }\n      pais = p.getParents();\n    }\n  } catch (err) {\n    // arquivo já apagado ou inacessível: nada a fazer\n  }\n}\n\nconst PAGINA = `<!doctype html>\n<html lang=\"pt-BR\"><head><meta charset=\"utf-8\">\n<style>\nbody{margin:0;background:#eef1f5;color:#26303d;font:15px/1.45 Roboto,\"Segoe UI\",system-ui,sans-serif}\n.wrap{max-width:560px;margin:0 auto;padding:16px 16px 40px}\n.cab{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}\n.cab button{width:44px;height:40px;border-radius:10px;border:1px solid #d8dee7;background:#fff;color:#26303d;font-size:20px;cursor:pointer}\n.cab button:disabled{opacity:.35;cursor:default}\n.cab b{font:600 18px \"Roboto Condensed\",Roboto,system-ui,sans-serif;color:#5d7391}\n.sheet{background:#fff;border:1px solid #d8dee7;border-radius:6px;padding:18px 16px 20px}\n.top{display:flex;gap:12px;align-items:center}\n.logo{flex:none;width:72px;height:48px;border-radius:7px;background:#5d7391;display:grid;place-items:center}\n.tt{font:600 15px/1.3 \"Roboto Condensed\",Roboto,system-ui,sans-serif;color:#5d7391}\nh3{text-align:center;font:600 18px \"Roboto Condensed\",Roboto,system-ui,sans-serif;color:#5d7391;margin:16px 0 6px}\nh4{font:600 15px \"Roboto Condensed\",Roboto,system-ui,sans-serif;color:#5d7391;margin:16px 0 4px}\n.ln{display:flex;justify-content:space-between;gap:12px;padding:3px 0;color:#6a7789}\n.ln span:first-child{min-width:0}\n.v{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}\n.v.in{color:#2f8a3e}.v.out{color:#b8322c}\n.ln.open .v{color:#6a7789;font-weight:400}\n.ln.big{color:#26303d;font-weight:600;font-size:16px;border-top:1px solid #d8dee7;margin-top:6px;padding-top:8px}\n.ln.sub{font-size:13px}\n.note{font-size:12px;color:#6a7789;margin-top:12px}\n.rodape{font-size:13px;color:#6a7789;margin-top:14px;display:grid;gap:6px}\n.rodape a{color:#5d7391;font-weight:600}\n.vazio{background:#fff;border:1px solid #d8dee7;border-radius:6px;padding:24px 16px;text-align:center;color:#6a7789}\n<\/style><\/head><body>\n<div class=\"wrap\">\n  <div class=\"cab\"><button id=\"ant\" aria-label=\"Mês anterior\">‹<\/button><b id=\"titulo\">Balancetes<\/b><button id=\"prox\" aria-label=\"Próximo mês\">›<\/button><\/div>\n  <div id=\"folha\"><\/div>\n  <div class=\"rodape\"><span id=\"atual\"><\/span><span id=\"comp\"><\/span><\/div>\n<\/div>\n<script>\nvar D = DADOSAQUI;\nvar LOGO = '<svg width=\"58\" height=\"40\" viewBox=\"0 0 58 40\" aria-hidden=\"true\"><g fill=\"#fff\"><path d=\"M4 13 12 6l8 7v11H4z\"/><path d=\"M19 12l10-8 10 8v12H19z\"/><path d=\"M38 13l8-7 8 7v11H38z\"/><\/g><g fill=\"#5d7391\"><path d=\"M10 24v-5a2 2 0 0 1 4 0v5z\"/><path d=\"M27 24v-6a2 2 0 0 1 4 0v6z\"/><path d=\"M44 24v-5a2 2 0 0 1 4 0v5z\"/><\/g><text x=\"29\" y=\"31.5\" text-anchor=\"middle\" font-size=\"5.2\" font-weight=\"600\" fill=\"#fff\" font-family=\"Roboto,sans-serif\">Condomínio Caiapó<\/text><text x=\"29\" y=\"37.5\" text-anchor=\"middle\" font-size=\"4.6\" fill=\"#fff\" font-family=\"Roboto,sans-serif\">83 | 85 | 87<\/text><\/svg>';\nvar MESES = [\"Janeiro\",\"Fevereiro\",\"Março\",\"Abril\",\"Maio\",\"Junho\",\"Julho\",\"Agosto\",\"Setembro\",\"Outubro\",\"Novembro\",\"Dezembro\"];\nvar mes = null;\nfunction z(n){ return String(n).padStart(2, \"0\"); }\nfunction hoje(){ var d = new Date(); return d.getFullYear() + \"-\" + z(d.getMonth() + 1) + \"-\" + z(d.getDate()); }\nfunction lista(){ return Object.keys(D.meses).sort(); }\nfunction el(tag, cls, txt){ var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }\nfunction linha(a, b, c, x){ var d = el(\"div\", \"ln\" + (x ? \" \" + x : \"\")); d.appendChild(el(\"span\", \"\", a)); d.appendChild(el(\"span\", \"v \" + (c || \"\"), b)); return d; }\nfunction desenhar(){\n  var ms = lista(), box = document.getElementById(\"folha\");\n  box.textContent = \"\";\n  if (!ms.length){ box.appendChild(el(\"div\", \"vazio\", \"Nenhum balancete publicado ainda.\")); return; }\n  if (!mes || ms.indexOf(mes) < 0){ var agora = hoje().slice(0, 7), ok = ms.filter(function(m){ return m <= agora; }); mes = ok.length ? ok[ok.length - 1] : ms[ms.length - 1]; }\n  var i = ms.indexOf(mes), F = D.meses[mes], atr = hoje() > F.venc, partes = mes.split(\"-\");\n  document.getElementById(\"titulo\").textContent = MESES[Number(partes[1]) - 1] + \" \" + partes[0];\n  document.getElementById(\"ant\").disabled = i <= 0;\n  document.getElementById(\"prox\").disabled = i >= ms.length - 1;\n  var sh = el(\"div\", \"sheet\"), top = el(\"div\", \"top\"), lg = el(\"div\", \"logo\"), tt = el(\"div\", \"tt\");\n  lg.innerHTML = LOGO; tt.appendChild(document.createTextNode(\"Condomínio do Edifício Caiapó 83, 85 e 87\")); tt.appendChild(el(\"br\")); tt.appendChild(document.createTextNode(\"Balancete Mensal | Exercício \" + F.ano));\n  top.appendChild(lg); top.appendChild(tt); sh.appendChild(top); sh.appendChild(el(\"h3\", \"\", F.nome));\n  F.itens.forEach(function(it){\n    if (it.t === \"h4\") sh.appendChild(el(\"h4\", \"\", it.x));\n    else if (it.p) sh.appendChild(atr ? linha(it.a, \"Em atraso\", \"out\") : linha(it.a, \"A vencer\", \"\", \"open\"));\n    else sh.appendChild(linha(it.a, it.b, it.c, it.e));\n  });\n  var vd = F.venc.split(\"-\");\n  var nota = (!F.ab ? \"Todas as cotas pagas. \" : F.ab + (F.ab > 1 ? \" unidades \" : \" unidade \") + (atr ? \"Em atraso\" : \"A vencer\") + \" (vencimento \" + vd[2] + \"/\" + vd[1] + \"). \") + F.resto;\n  sh.appendChild(el(\"p\", \"note\", nota));\n  box.appendChild(sh);\n  var at = D.info && D.info.atualizado ? new Date(D.info.atualizado) : null;\n  document.getElementById(\"atual\").textContent = at ? \"Atualizado em \" + z(at.getDate()) + \"/\" + z(at.getMonth() + 1) + \"/\" + at.getFullYear() + \" às \" + z(at.getHours()) + \":\" + z(at.getMinutes()) + \".\" : \"\";\n  var cp = document.getElementById(\"comp\"); cp.textContent = \"\";\n  if (D.info && D.info.pasta){ cp.appendChild(document.createTextNode(\"Comprovantes das despesas: \")); var a = el(\"a\", \"\", \"pasta no Google Drive\"); a.href = D.info.pasta; a.target = \"\\x5Fblank\"; a.rel = \"noopener\"; cp.appendChild(a); }\n}\ndocument.getElementById(\"ant\").onclick = function(){ var ms = lista(), i = ms.indexOf(mes); if (i > 0){ mes = ms[i - 1]; desenhar(); } };\ndocument.getElementById(\"prox\").onclick = function(){ var ms = lista(), i = ms.indexOf(mes); if (i < ms.length - 1){ mes = ms[i + 1]; desenhar(); } };\ndesenhar();\nsetInterval(function(){ google.script.run.withSuccessHandler(function(novo){ D = novo; desenhar(); }).dados(); }, 60000);\n<\/script><\/body><\/html>`;\n";
 function garantirNuvem(){if(!data.nuvem||typeof data.nuvem!=="object")data.nuvem={desde:null,excluir:[]};if(!Array.isArray(data.nuvem.excluir))data.nuvem.excluir=[]}
 const cfgN=()=>data.config.nuvem||{};
 const PUBLICAR_PADRAO="2026-06";
@@ -632,9 +644,7 @@ function primeiroMes(){const ms=mesesComDados();const a=[data.config.mesInicial,
 function ultimoMes(){const ms=mesesComDados();const u=ms[ms.length-1];return u&&u>nowM?u:nowM}
 function nuvemMarcar(m){garantirNuvem();const d=data.nuvem.desde;if(!d||m<d){data.nuvem.desde=m;persist()}nuvemAgendar()}
 let nvTimer=null,nvSync=false,nvErro=null;
-/* o status A vencer/Em atraso muda com a data: reenvia o mês quando passa o vencimento */
-function verificarFases(){if(!nuvemAtiva())return;garantirNuvem();const fs=data.nuvem.fase||{},fim=ultimoMes();
-  for(let m=publicarDesde();m<=fim;m=shift(m,1)){if(fs[m]!==(emAtraso(m)?"d":"a")){nuvemMarcar(m);return}}}
+function verificarFases(){garantirNuvem();if(!data.nuvem.siteOk&&nuvemAtiva()){nuvemMarcar(primeiroMes())}}
 function nuvemAgendar(ms){if(!nuvemAtiva())return;clearTimeout(nvTimer);nvTimer=setTimeout(sincronizar,ms==null?3000:ms)}
 const nvCbs={};let nvSeq=0;
 function chamar(obj,cfg){const c=cfg||cfgN();return new Promise(res=>{const k="n"+(++nvSeq);nvCbs[k]=res;
@@ -664,18 +674,15 @@ async function sincronizar(){
       const m=data.nuvem.desde;
       if(!publica(m)){data.nuvem.desde=publicarDesde();continue}
       if(m<data.config.mesInicial&&!doMes(m).length){data.nuvem.desde=shift(m,1);continue}
-      nvMostrar("Enviando balancete de "+mLabel(m)+"…");
-      const fase=emAtraso(m)?"d":"a";
-      const b64=await gerarPng(m);
-      const r=await chamar({acao:"balancete",rotulo:rotuloMes(m),nome:"Balancete "+rotuloMes(m)+".png",b64});if(!r.ok)throw r;
-      data.nuvem.fase={...(data.nuvem.fase||{}),[m]:fase};
+      nvMostrar("Atualizando o site: "+mLabel(m)+"…");
+      const r=await chamar({acao:"folha",mes:m,rotulo:rotuloMes(m),desde:publicarDesde(),folha:modeloFolha(m)});if(!r.ok)throw r;
       if(data.nuvem.desde===m){const p=shift(m,1);data.nuvem.desde=p>fim?null:p}
       persist()}
     if(data.nuvem.desde&&data.nuvem.desde>fim)data.nuvem.desde=null;
-    data.config={...data.config,nuvem:{...cfgN(),ultimoEnvio:Date.now()}};persist();
+    data.nuvem.siteOk=true;data.config={...data.config,nuvem:{...cfgN(),ultimoEnvio:Date.now()}};persist();
   }catch(err){nvErro=err&&err.erro?err.erro:"rede"}
   nvSync=false;nvMostrar();
-  if(nvErro){if(nvErro!=="codigo")nuvemAgendar(60000)}
+  if(nvErro){if(nvErro!=="codigo"&&nvErro!=="acao")nuvemAgendar(60000)}
   else if(contarPendentes())nuvemAgendar(500)}
 function dataHoraCurta(ms){const d=new Date(ms),z=n=>String(n).padStart(2,"0");return z(d.getDate())+"/"+z(d.getMonth()+1)+" às "+z(d.getHours())+":"+z(d.getMinutes())}
 function nvMostrar(txt){
@@ -684,11 +691,12 @@ function nvMostrar(txt){
   if(!NATIVE){st.textContent="Disponível no app instalado.";return}
   if(!nuvemAtiva()){st.textContent="Nuvem não configurada. Os dados ficam só neste celular.";return}
   const n=contarPendentes();
-  if(nvSync){st.textContent=txt||"Enviando para o Drive…";return}
+  if(nvSync){st.textContent=txt||"Atualizando…";return}
+  if(nvErro==="acao"){st.className="msg err";st.textContent="O script do Google está na versão antiga. Atualize: copie o script de novo, cole no Google e publique uma nova versão (veja Configurar a nuvem).";return}
   if(nvErro==="codigo"){st.className="msg err";st.textContent="O Drive recusou o envio: o código do script não confere. Copie o script de novo e cole no Google.";return}
-  if(nvErro){st.className="msg err";st.textContent="Sem conexão com o Drive. "+n+(n===1?" envio pendente":" envios pendentes")+"; o app tenta de novo sozinho.";return}
+  if(nvErro){st.className="msg err";st.textContent="Sem conexão. "+n+(n===1?" envio pendente":" envios pendentes")+"; o app tenta de novo sozinho.";return}
   if(n){st.textContent=n+(n===1?" envio pendente.":" envios pendentes.");return}
-  st.className="msg ok";st.textContent="Tudo enviado ao Drive"+(c.ultimoEnvio?", em "+dataHoraCurta(c.ultimoEnvio):"")+"."}
+  st.className="msg ok";st.textContent="Site e Drive atualizados"+(c.ultimoEnvio?", em "+dataHoraCurta(c.ultimoEnvio):"")+"."}
 function copiar(t){if(NATIVE)Android.copiarTexto(t);else if(navigator.clipboard)navigator.clipboard.writeText(t).catch(()=>{})}
 function gerarCodigo(){const a=new Uint8Array(18);crypto.getRandomValues(a);return Array.from(a,b=>"abcdefghijkmnpqrstuvwxyz23456789"[b%32]).join("")}
 $("nvScript").onclick=()=>{let c=cfgN();if(!c.token){data.config={...data.config,nuvem:{...c,token:gerarCodigo()}};persist();c=cfgN()}
@@ -704,8 +712,10 @@ $("nvConectar").onclick=async()=>{
     m.className="msg ok";m.textContent="Conectado. A pasta foi criada no Drive do condomínio e o envio começou.";$("nvCfg").open=false;nvErro=null;nvMostrar();nuvemAgendar(300)}
   else if(r.erro==="codigo"){m.className="msg err";m.textContent="O script respondeu, mas o código não confere. Copie o script de novo, cole no Google e faça uma nova implantação."}
   else{m.className="msg err";m.textContent="Não consegui falar com o script. Confira a URL, a internet e se a implantação está com acesso para Qualquer pessoa."}};
-$("nvLink").onclick=()=>{const p=cfgN().pasta;if(p){copiar(p);showStatus("Link da pasta copiado. Mande para os moradores.")}};
-$("nvAbrir").onclick=()=>{const p=cfgN().pasta;if(p&&NATIVE)Android.abrirLink(p)};
+$("nvLink").onclick=()=>{const u=cfgN().url;if(u){copiar(u);showStatus("Link do site copiado. Mande para os moradores.")}};
+$("nvAbrir").onclick=()=>{const u=cfgN().url;if(u&&NATIVE)Android.abrirLink(u)};
+$("nvLinkComp").onclick=()=>{const p=cfgN().pasta;if(p){copiar(p);showStatus("Link da pasta de comprovantes copiado.")}};
+$("nvAbrirComp").onclick=()=>{const p=cfgN().pasta;if(p&&NATIVE)Android.abrirLink(p)};
 let nvTudoT;$("nvTudo").onclick=()=>{const b=$("nvTudo");if(!b.classList.contains("danger")){b.classList.add("danger");b.textContent="Confirmar: reenviar tudo";nvTudoT=setTimeout(()=>{b.classList.remove("danger");b.textContent="Reenviar tudo"},4000);return}
   clearTimeout(nvTudoT);b.classList.remove("danger");b.textContent="Reenviar tudo";
   data.lancamentos=data.lancamentos.map(e=>e.comprovante?{...e,comprovante:{...e.comprovante,enviado:false,anterior:e.comprovante.id||e.comprovante.anterior||null}}:e);
