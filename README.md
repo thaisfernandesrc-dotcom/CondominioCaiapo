@@ -12,11 +12,14 @@ Cada envio para a branch `main` gera o APK automaticamente (aba **Actions**) e p
 
 O APK é sempre assinado com a mesma chave (`app/caiapo.keystore`), então as atualizações instalam por cima sem apagar os dados. Mantenha este repositório privado.
 
-## Site dos balancetes e comprovantes no Drive
+## Nuvem (Google Drive)
 
-O script `nuvem/Codigo.gs`, instalado uma vez na conta Google do condomínio, faz duas coisas:
+O app envia sozinho, a cada mudança, os balancetes (imagem) e as fotos dos comprovantes para o Drive do condomínio:
 
-- **Site dos balancetes:** o endereço do script (termina em /exec) é um site que mostra o balancete de cada mês, igual ao do app. O app envia os dados a cada mudança e o site se atualiza sozinho a cada minuto. "A vencer" e "Em atraso" são calculados pelo site na hora, pela data do vencimento.
-- **Comprovantes:** as fotos das despesas ficam numa pasta do Drive do condomínio, por mês, com link só de leitura.
+    Condomínio Caiapó - Prestação de Contas
+      Balancetes            um balancete por mês
+      2026-06 Junho, ...    comprovantes de cada mês
 
-O app gera um código próprio e já copia o script com ele preenchido. O passo a passo está no app, em "Nuvem (Google Drive)".
+Quando um lançamento muda um mês, os balancetes daquele mês e dos seguintes são reenviados (o saldo muda em cadeia), e o balancete também é reenviado quando passa o vencimento. Sem internet, os envios ficam na fila.
+
+O lado do Google é o script `nuvem/Codigo.gs`, instalado uma vez na conta do condomínio (passo a passo no app, em "Nuvem (Google Drive)").
