@@ -59,8 +59,10 @@ function doPost(e) {
   }
 }
 
-// O site dos balancetes
-function doGet() {
+// O site dos balancetes. Com ?formato=json devolve só os dados, para o
+// site publicado fora do Google (que abre mesmo com várias contas logadas).
+function doGet(e) {
+  if (e && e.parameter && e.parameter.formato === 'json') return responder(dados());
   const json = JSON.stringify(dados()).split('<').join('\\u003c');
   return HtmlService.createHtmlOutput(PAGINA.split('DADOSAQUI').join(json))
     .setTitle('Condomínio Caiapó – Balancetes')
